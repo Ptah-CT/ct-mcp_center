@@ -1,14 +1,14 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/trpc.ts", "src/router.ts", "src/routers/frontend/*.ts"],
   format: ["esm"],
   target: "node18",
   outDir: "dist",
   sourcemap: true,
   clean: true,
   splitting: false,
-  bundle: true,
+  bundle: false,
   keepNames: true,
   minify: false,
   dts: true, // Generate TypeScript declaration files
@@ -17,5 +17,5 @@ export default defineConfig({
       js: `.js`, // Ensure .js output instead of .mjs
     };
   },
-  external: ["@trpc/server", "@repo/zod-types", "zod"],
+  external: ["@trpc/server", "zod"],
 });

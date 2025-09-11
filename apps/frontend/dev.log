@@ -1,0 +1,28 @@
+
+> frontend@0.1.0 dev /home/auctor/srv/ct-mcp_center/apps/frontend
+> next dev --turbopack --port 23456 --hostname 0.0.0.0
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /home/auctor/pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /home/auctor/srv/ct-mcp_center/pnpm-lock.yaml
+
+   ▲ Next.js 15.5.2 (Turbopack)
+   - Local:        http://localhost:23456
+   - Network:      http://0.0.0.0:23456
+   - Experiments (use with caution):
+     · proxyTimeout: 120000
+
+ ✓ Starting...
+ ○ Compiling middleware ...
+ ✓ Compiled middleware in 4.4s
+ ✓ Ready in 9.9s
+ ○ Compiling /[locale] ...
+ ✓ Compiled /[locale] in 66s
+ GET /en 200 in 73484ms
+ GET /en 200 in 1402ms
+ HEAD /en 200 in 923ms
+[?25h

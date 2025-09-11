@@ -194,6 +194,7 @@ async function filterActiveTools(
         const parsed = parseToolName(tool.name);
         if (!parsed) {
           // If tool name doesn't follow expected format, include it
+          console.log(`Tool ${tool.name} doesn't follow expected naming format (serverName__toolName), including anyway`);
           activeTools.push(tool);
           return;
         }
@@ -201,6 +202,7 @@ async function filterActiveTools(
         const serverUuid = await getServerUuidByName(parsed.serverName);
         if (!serverUuid) {
           // If server not found, include the tool (fallback behavior)
+          console.log(`Server UUID not found for server name '${parsed.serverName}' (tool: ${tool.name}), including tool anyway`);
           activeTools.push(tool);
           return;
         }
@@ -213,8 +215,11 @@ async function filterActiveTools(
         );
 
         // If no mapping exists or tool is active, include it
+        // Default behavior: if no explicit mapping exists, allow the tool (fail-open)
         if (status === null || status === "ACTIVE") {
           activeTools.push(tool);
+        } else {
+          console.log(`Tool ${tool.name} filtered out (status: ${status}) in namespace ${namespaceUuid}`);
         }
         // If status is "INACTIVE", tool is filtered out
       } catch (error) {
@@ -252,11 +257,13 @@ async function isToolAllowed(
     );
 
     // If no mapping exists or tool is active, allow it
+    // Default behavior: if no explicit mapping exists, allow the tool (fail-open)
     if (status === null || status === "ACTIVE") {
       return { allowed: true };
     }
 
     // Tool is inactive
+    console.log(`Tool ${toolName} blocked (status: ${status}) in namespace ${namespaceUuid}`);
     return {
       allowed: false,
       reason: "Tool has been marked as inactive in this namespace",

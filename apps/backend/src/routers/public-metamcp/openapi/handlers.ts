@@ -44,7 +44,11 @@ export const createOriginalListToolsHandler = (
         if (!session) return;
 
         const capabilities = session.client.getServerCapabilities();
-        if (!capabilities?.tools) return;
+        // Don't skip servers without declared tool capabilities - try to list tools anyway
+        const hasToolCapability = capabilities?.tools;
+        if (!hasToolCapability) {
+          console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list anyway`);
+        }
 
         // Use name assigned by user, fallback to name from server
         const serverName =
@@ -123,7 +127,11 @@ export const createOriginalCallToolHandler = (): CallToolHandler => {
       if (!session) continue;
 
       const capabilities = session.client.getServerCapabilities();
-      if (!capabilities?.tools) continue;
+      // Don't skip servers without declared tool capabilities - try anyway
+      const hasToolCapability = capabilities?.tools;
+      if (!hasToolCapability) {
+        console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list for dynamic discovery`);
+      }
 
       // Use name assigned by user, fallback to name from server
       const serverName =

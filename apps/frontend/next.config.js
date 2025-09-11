@@ -6,7 +6,7 @@ const nextConfig = {
   },
   async rewrites() {
     // Use localhost for rewrites since frontend and backend run in the same container
-    const backendUrl = "http://localhost:12009";
+    const backendUrl = "http://localhost:32009";
 
     return [
       {

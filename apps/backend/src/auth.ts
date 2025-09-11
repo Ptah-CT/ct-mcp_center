@@ -58,6 +58,10 @@ export const auth = betterAuth({
     "http://0.0.0.0",
     "http://0.0.0.0:3000",
     "http://0.0.0.0:12008",
+    "http://192.168.2.222",
+    "http://192.168.2.222:23456",
+    "http://192.168.2.222:12008",
+    "http://192.168.2.222:32009",
   ],
   plugins: [
     // Add generic OAuth plugin for OIDC support

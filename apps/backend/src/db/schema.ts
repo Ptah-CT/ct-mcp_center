@@ -1,10 +1,4 @@
-import { OAuthClientInformation } from "@modelcontextprotocol/sdk/shared/auth.js";
-import { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
-import {
-  McpServerErrorStatusEnum,
-  McpServerStatusEnum,
-  McpServerTypeEnum,
-} from "@repo/zod-types";
+import { McpServerErrorStatusEnum, McpServerStatusEnum, McpServerTypeEnum } from "@repo/zod-types";
 import { sql } from "drizzle-orm";
 import {
   boolean,

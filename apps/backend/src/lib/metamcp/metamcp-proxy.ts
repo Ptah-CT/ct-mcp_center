@@ -134,19 +134,36 @@ export const createServer = async (
         visitedServers.add(mcpServerUuid);
 
         const capabilities = session.client.getServerCapabilities();
-        if (!capabilities?.tools) return;
+        // Don't skip servers without declared tool capabilities - try to list tools anyway
+        // Some MCP servers don't declare capabilities.tools but still support tools/list
+        const hasToolCapability = capabilities?.tools;
+        if (!hasToolCapability) {
+          console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list anyway`);
+        }
 
         // Use name assigned by user, fallback to name from server
         const serverName =
           params.name || session.client.getServerVersion()?.name || "";
 
         try {
+          // Get configurable timeout values to prevent tools from being lost due to timeouts
+          const resetTimeoutOnProgress = await configService.getMcpResetTimeoutOnProgress();
+          const timeout = await configService.getMcpTimeout();
+          const maxTotalTimeout = await configService.getMcpMaxTotalTimeout();
+
+          const mcpRequestOptions: RequestOptions = {
+            resetTimeoutOnProgress,
+            timeout,
+            maxTotalTimeout,
+          };
+
           const result = await session.client.request(
             {
               method: "tools/list",
               params: { _meta: request.params?._meta },
             },
             ListToolsResultSchema,
+            mcpRequestOptions,
           );
 
           // Save original tools to database
@@ -227,7 +244,11 @@ export const createServer = async (
 
           if (session) {
             const capabilities = session.client.getServerCapabilities();
-            if (!capabilities?.tools) continue;
+            // Don't skip servers without declared tool capabilities - try anyway
+            const hasToolCapability = capabilities?.tools;
+            if (!hasToolCapability) {
+              console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list for dynamic discovery`);
+            }
 
             // Use name assigned by user, fallback to name from server
             const serverName =

@@ -1,0 +1,73 @@
+
+> metamcp@ dev /home/auctor/srv/ct-mcp_center
+> dotenv -e .env.local turbo run dev
+
+turbo 2.5.5
+
+• Packages in scope: @repo/eslint-config, @repo/trpc, @repo/typescript-config, @repo/zod-types, backend, frontend
+• Running dev in 6 packages
+• Remote caching disabled
+backend:dev: cache bypass, force executing 0e52db26c04a909d
+@repo/trpc:dev: cache bypass, force executing 97c452ebb1d6ba52
+frontend:dev: cache bypass, force executing f2fec9ac05a970b5
+@repo/zod-types:dev: cache bypass, force executing 330e9aa6fb7768ac
+@repo/zod-types:dev: 
+@repo/zod-types:dev: > @repo/zod-types@1.0.0 dev /home/auctor/srv/ct-mcp_center/packages/zod-types
+@repo/zod-types:dev: > tsup --watch
+@repo/zod-types:dev: 
+frontend:dev: 
+frontend:dev: > frontend@0.1.0 dev /home/auctor/srv/ct-mcp_center/apps/frontend
+frontend:dev: > next dev --turbopack --port 23456 --hostname 0.0.0.0
+frontend:dev: 
+@repo/trpc:dev: 
+@repo/trpc:dev: > @repo/trpc@0.0.0 dev /home/auctor/srv/ct-mcp_center/packages/trpc
+@repo/trpc:dev: > tsup --watch
+@repo/trpc:dev: 
+backend:dev: 
+backend:dev: > backend@1.0.0 dev /home/auctor/srv/ct-mcp_center/apps/backend
+backend:dev: > tsx watch src/index.ts
+backend:dev: 
+frontend:dev:  ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+frontend:dev:  ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+frontend:dev:  We detected multiple lockfiles and selected the directory of /home/auctor/pnpm-lock.yaml as the root directory.
+frontend:dev:  To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+frontend:dev:    See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+frontend:dev:  Detected additional lockfiles: 
+frontend:dev:    * /home/auctor/srv/ct-mcp_center/pnpm-lock.yaml
+frontend:dev: 
+@repo/zod-types:dev: CLI Building entry: src/index.ts
+@repo/zod-types:dev: CLI Using tsconfig: tsconfig.json
+@repo/zod-types:dev: CLI tsup v8.5.0
+@repo/zod-types:dev: CLI Using tsup config: /home/auctor/srv/ct-mcp_center/packages/zod-types/tsup.config.ts
+@repo/zod-types:dev: CLI Running in watch mode
+@repo/zod-types:dev: CLI Target: node18
+@repo/zod-types:dev: CLI Cleaning output folder
+@repo/zod-types:dev: ESM Build start
+@repo/trpc:dev: CLI Building entry: src/index.ts
+@repo/trpc:dev: CLI Using tsconfig: tsconfig.json
+@repo/trpc:dev: CLI tsup v8.5.0
+@repo/trpc:dev: CLI Using tsup config: /home/auctor/srv/ct-mcp_center/packages/trpc/tsup.config.ts
+@repo/trpc:dev: CLI Running in watch mode
+@repo/trpc:dev: CLI Target: node18
+@repo/trpc:dev: CLI Cleaning output folder
+@repo/trpc:dev: ESM Build start
+@repo/zod-types:dev: ESM dist/index.js     34.93 KB
+@repo/zod-types:dev: ESM dist/index.js.map 74.07 KB
+@repo/zod-types:dev: ESM ⚡️ Build success in 602ms
+@repo/zod-types:dev: CLI Watching for changes in "."
+@repo/zod-types:dev: CLI Ignoring changes in "**/{.git,node_modules}/**" | "dist"
+@repo/trpc:dev: ESM dist/index.js     14.62 KB
+@repo/trpc:dev: ESM dist/index.js.map 33.56 KB
+@repo/trpc:dev: ESM ⚡️ Build success in 701ms
+@repo/trpc:dev: CLI Watching for changes in "."
+@repo/trpc:dev: CLI Ignoring changes in "**/{.git,node_modules}/**" | "dist"
+frontend:dev:    ▲ Next.js 15.5.2 (Turbopack)
+frontend:dev:    - Local:        http://localhost:23456
+frontend:dev:    - Network:      http://0.0.0.0:23456
+frontend:dev:    - Experiments (use with caution):
+frontend:dev:      · proxyTimeout: 120000
+frontend:dev: 
+frontend:dev:  ✓ Starting...
+ ELIFECYCLE  Command failed.
+frontend:dev: [?25h
+ ERROR  run failed: command  exited (1)

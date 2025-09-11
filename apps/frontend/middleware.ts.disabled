@@ -88,9 +88,9 @@ export async function middleware(request: NextRequest) {
       "";
 
     // Check if user is authenticated by calling the session endpoint
-    const { data: session } = await betterFetch("/api/auth/get-session", {
+    const { data: session } = await betterFetch("/api/auth/session", {
       // this hardcoded is correct, because in same container, we should use localhost, outside url won't work
-      baseURL: "http://127.0.0.1:32009",
+      baseURL: "http://localhost:32009",
       headers: {
         cookie: request.headers.get("cookie") || "",
         // Pass nginx-forwarded host headers for better-auth baseURL resolution
@@ -106,7 +106,7 @@ export async function middleware(request: NextRequest) {
       // Redirect to login if not authenticated (with locale)
       const loginUrl = new URL(`/${locale}/login`, request.url);
       loginUrl.searchParams.set("callbackUrl", pathnameWithoutLocale);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.next();
     }
 
     return NextResponse.next();
@@ -115,7 +115,7 @@ export async function middleware(request: NextRequest) {
     // On error, redirect to login (with locale)
     const loginUrl = new URL(`/${locale}/login`, request.url);
     loginUrl.searchParams.set("callbackUrl", pathnameWithoutLocale);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.next();
   }
 }
 

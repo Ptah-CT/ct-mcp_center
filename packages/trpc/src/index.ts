@@ -13,4 +13,3 @@ export { createAppRouter, createFrontendRouter } from "./router";
 export { createMcpServersRouter } from "./routers/frontend";
 
 // Export all zod types for convenience
-export * from "@repo/zod-types";
