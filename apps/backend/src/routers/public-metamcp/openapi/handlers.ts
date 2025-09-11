@@ -35,25 +35,33 @@ export const createOriginalListToolsHandler = (
 
     await Promise.allSettled(
       Object.entries(serverParams).map(async ([mcpServerUuid, params]) => {
+        console.log(`[HANDLER-DEBUG] Processing server: ${params.name} (${mcpServerUuid})`);
         const session = await mcpServerPool.getSession(
           context.sessionId,
           mcpServerUuid,
           params,
           context.namespaceUuid,
         );
-        if (!session) return;
+        if (!session) {
+          console.log(`[HANDLER-DEBUG] No session for server: ${params.name} (${mcpServerUuid})`);
+          return;
+        }
 
+        console.log(`[HANDLER-DEBUG] Got session for server: ${params.name} (${mcpServerUuid})`);
         const capabilities = session.client.getServerCapabilities();
-        // Don't skip servers without declared tool capabilities - try to list tools anyway
+        // Some MCP servers don't declare capabilities.tools but still support tools/list
         const hasToolCapability = capabilities?.tools;
         if (!hasToolCapability) {
           console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list anyway`);
+        } else {
+          console.log(`[HANDLER-DEBUG] Server ${params.name} declares tool capabilities: ${JSON.stringify(capabilities.tools)}`);
         }
 
         // Use name assigned by user, fallback to name from server
         const serverName =
           params.name || session.client.getServerVersion()?.name || "";
         try {
+          console.log(`[HANDLER-DEBUG] Requesting tools/list from server: ${serverName}`);
           // Get configurable timeout values to bypass MCP SDK default enforcement
           const resetTimeoutOnProgress =
             await configService.getMcpResetTimeoutOnProgress();
@@ -75,6 +83,7 @@ export const createOriginalListToolsHandler = (
             mcpRequestOptions,
           );
 
+          console.log(`[HANDLER-DEBUG] tools/list response from ${serverName}: ${result.tools?.length || 0} tools`);
           const toolsWithSource =
             result.tools?.map((tool) => {
               const toolName = `${sanitizeName(serverName)}__${tool.name}`;
@@ -85,9 +94,10 @@ export const createOriginalListToolsHandler = (
               };
             }) || [];
 
+          console.log(`[HANDLER-DEBUG] Adding ${toolsWithSource.length} tools from ${serverName} to allTools`);
           allTools.push(...toolsWithSource);
         } catch (error) {
-          console.error(`Error fetching tools from: ${serverName}`, error);
+          console.error(`[HANDLER-DEBUG] Error fetching tools from: ${serverName}`, error);
         }
       }),
     );
@@ -127,11 +137,7 @@ export const createOriginalCallToolHandler = (): CallToolHandler => {
       if (!session) continue;
 
       const capabilities = session.client.getServerCapabilities();
-      // Don't skip servers without declared tool capabilities - try anyway
-      const hasToolCapability = capabilities?.tools;
-      if (!hasToolCapability) {
-        console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list for dynamic discovery`);
-      }
+      if (!capabilities?.tools) continue;
 
       // Use name assigned by user, fallback to name from server
       const serverName =

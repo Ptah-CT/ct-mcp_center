@@ -1,12 +1,26 @@
 "use client";
 
-// import { useEffect, useState } from "react";
-
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useLogsStore } from "@/lib/stores/logs-store";
 
 export function LogsStatusIndicator() {
   const { totalCount, isAutoRefreshing } = useLogsStore();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Prevent hydration mismatch by only showing dynamic content after mount
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Return static placeholder during SSR and initial hydration
+  if (!hasMounted) {
+    return (
+      <div className="flex items-center gap-1">
+        {/* Static placeholder to match server render */}
+      </div>
+    );
+  }
   // const [recentErrorCount, setRecentErrorCount] = useState(0);
 
   // Count recent errors (last 5 minutes) - REMOVED

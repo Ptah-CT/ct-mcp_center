@@ -23,6 +23,7 @@ import { z } from "zod";
 
 import { toolsImplementations } from "../../trpc/tools.impl";
 import { configService } from "../config.service";
+import { logger } from "../logging/logfire";
 import { ConnectedClient } from "./client";
 import { getMcpServers } from "./fetch-metamcp";
 import { mcpServerPool } from "./mcp-server-pool";
@@ -59,6 +60,18 @@ export const createServer = async (
       return true;
     }
 
+    // Check for URL-based self-references (HTTP servers pointing back to this instance)
+    if (params.url) {
+      const urlString = params.url.toLowerCase();
+      // Check if URL points to our own server (port 23456 or metamcp path)
+      if (urlString.includes(':23456') || urlString.includes('/metamcp/')) {
+        logger.info(
+          `Skipping self-referencing HTTP server: "${params.name}" with URL: ${params.url}`,
+        );
+        return true;
+      }
+    }
+
     return false;
   };
 
@@ -87,10 +100,12 @@ export const createServer = async (
     request,
     context,
   ) => {
+    logger.debug(`originalListToolsHandler called for namespace: ${context.namespaceUuid}`);
     const serverParams = await getMcpServers(
       context.namespaceUuid,
       includeInactiveServers,
     );
+    logger.debug(`Found ${Object.keys(serverParams).length} servers`, { servers: Object.keys(serverParams).map(uuid => ({ uuid, name: serverParams[uuid]?.name })) });
     const allTools: Tool[] = [];
 
     // Track visited servers to detect circular references - reset on each call
@@ -133,12 +148,15 @@ export const createServer = async (
         // Mark this server as visited
         visitedServers.add(mcpServerUuid);
 
+        console.log(`[PROXY-DEBUG] Processing server: ${params.name} (${mcpServerUuid})`);
         const capabilities = session.client.getServerCapabilities();
         // Don't skip servers without declared tool capabilities - try to list tools anyway
         // Some MCP servers don't declare capabilities.tools but still support tools/list
         const hasToolCapability = capabilities?.tools;
         if (!hasToolCapability) {
           console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list anyway`);
+        } else {
+          console.log(`[PROXY-DEBUG] Server ${params.name} declares tool capabilities: ${JSON.stringify(capabilities.tools)}`);
         }
 
         // Use name assigned by user, fallback to name from server
@@ -146,6 +164,7 @@ export const createServer = async (
           params.name || session.client.getServerVersion()?.name || "";
 
         try {
+          console.log(`[PROXY-DEBUG] Requesting tools/list from server: ${serverName}`);
           // Get configurable timeout values to prevent tools from being lost due to timeouts
           const resetTimeoutOnProgress = await configService.getMcpResetTimeoutOnProgress();
           const timeout = await configService.getMcpTimeout();
@@ -165,6 +184,8 @@ export const createServer = async (
             ListToolsResultSchema,
             mcpRequestOptions,
           );
+
+          console.log(`[PROXY-DEBUG] tools/list response from ${serverName}: ${result.tools?.length || 0} tools`);
 
           // Save original tools to database
           if (result.tools && result.tools.length > 0) {
@@ -194,9 +215,10 @@ export const createServer = async (
               };
             }) || [];
 
+          console.log(`[PROXY-DEBUG] Adding ${toolsWithSource.length} tools from ${serverName} to allTools`);
           allTools.push(...toolsWithSource);
         } catch (error) {
-          console.error(`Error fetching tools from: ${serverName}`, error);
+          console.error(`[PROXY-DEBUG] Error fetching tools from: ${serverName}`, error);
         }
       }),
     );

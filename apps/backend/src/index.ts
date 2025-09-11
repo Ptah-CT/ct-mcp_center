@@ -98,9 +98,9 @@ app.listen(32009, '0.0.0.0', async () => {
   console.log(
     "Waiting for server to be fully ready before initializing idle servers...",
   );
-//   await new Promise((resolve) => setTimeout(resolve, 3000)).then(
-//     initializeIdleServers,
-//   );
+  await new Promise((resolve) => setTimeout(resolve, 3000)).then(
+    initializeIdleServers,
+  );
 });
 
 app.get("/health", (req, res) => {

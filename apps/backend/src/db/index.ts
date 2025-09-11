@@ -16,13 +16,12 @@ if (!DATABASE_URL) {
 // when the database terminates idle connections (e.g., during maintenance).
 export const pool = new Pool({
   connectionString: DATABASE_URL,
-  ...(POSTGRES_CA_CERT && {
-    ssl: {
-      ca: POSTGRES_CA_CERT,
-      rejectUnauthorized: true,
-    },
-  }),
-  
+  ssl: DATABASE_URL.includes('supabase.com') || DATABASE_URL.includes('sslmode=require') 
+    ? (POSTGRES_CA_CERT ? {
+        ca: POSTGRES_CA_CERT,
+        rejectUnauthorized: true,
+      } : { rejectUnauthorized: false })
+    : false,
 });
 
 pool.on("error", (err) => {
