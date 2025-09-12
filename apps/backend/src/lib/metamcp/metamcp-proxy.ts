@@ -26,7 +26,7 @@ import { configService } from "../config.service";
 import { logger } from "../logging/logfire";
 import { ConnectedClient } from "./client";
 import { getMcpServers } from "./fetch-metamcp";
-import { mcpServerPool } from "./mcp-server-pool";
+import { apiKeyConnectionPool } from "./api-key-connection-pool";
 import {
   createFilterCallToolMiddleware,
   createFilterListToolsMiddleware,
@@ -41,7 +41,9 @@ import { sanitizeName } from "./utils";
 
 export const createServer = async (
   namespaceUuid: string,
-  sessionId: string,
+  apiKey: string,
+  keyUuid: string,
+  userId?: string,
   includeInactiveServers: boolean = false,
 ) => {
   const toolToClient: Record<string, ConnectedClient> = {};
@@ -64,7 +66,8 @@ export const createServer = async (
     if (params.url) {
       const urlString = params.url.toLowerCase();
       // Check if URL points to our own server (port 23456 or metamcp path)
-      if (urlString.includes(':23456') || urlString.includes('/metamcp/')) {
+      // But allow ct_dev-endpoint since it's our proxy endpoint that should expose bundled tools
+      if ((urlString.includes(':23456') || urlString.includes('/metamcp/')) && params.name !== "ct_dev-endpoint") {
         logger.info(
           `Skipping self-referencing HTTP server: "${params.name}" with URL: ${params.url}`,
         );
@@ -92,7 +95,9 @@ export const createServer = async (
   // Create the handler context
   const handlerContext: MetaMCPHandlerContext = {
     namespaceUuid,
-    sessionId,
+    apiKey,
+    keyUuid,
+    userId,
   };
 
   // Original List Tools Handler
@@ -120,16 +125,17 @@ export const createServer = async (
         if (visitedServers.has(mcpServerUuid)) {
           return;
         }
-        const session = await mcpServerPool.getSession(
-          context.sessionId,
+        const connection = await apiKeyConnectionPool.getConnection(
+          context.apiKey,
           mcpServerUuid,
           params,
-          namespaceUuid,
+          context.keyUuid,
+          context.userId,
         );
-        if (!session) return;
+        if (!connection) return;
 
         // Now check for self-referencing using the actual MCP server name
-        const serverVersion = session.client.getServerVersion();
+        const serverVersion = connection.client.getServerVersion();
         const actualServerName = serverVersion?.name || params.name || "";
         const ourServerName = `metamcp-unified-${namespaceUuid}`;
 
@@ -140,8 +146,9 @@ export const createServer = async (
           return;
         }
 
-        // Check basic self-reference patterns
-        if (isSameServerInstance(params, mcpServerUuid)) {
+        // Check basic self-reference patterns, but allow ct_dev-endpoint for tools listing
+        // since it's our proxy endpoint that should expose its bundled tools
+        if (isSameServerInstance(params, mcpServerUuid) && params.name !== "ct_dev-endpoint") {
           return;
         }
 
@@ -149,7 +156,7 @@ export const createServer = async (
         visitedServers.add(mcpServerUuid);
 
         console.log(`[PROXY-DEBUG] Processing server: ${params.name} (${mcpServerUuid})`);
-        const capabilities = session.client.getServerCapabilities();
+        const capabilities = connection.client.getServerCapabilities();
         // Don't skip servers without declared tool capabilities - try to list tools anyway
         // Some MCP servers don't declare capabilities.tools but still support tools/list
         const hasToolCapability = capabilities?.tools;
@@ -161,7 +168,7 @@ export const createServer = async (
 
         // Use name assigned by user, fallback to name from server
         const serverName =
-          params.name || session.client.getServerVersion()?.name || "";
+          params.name || connection.client.getServerVersion()?.name || "";
 
         try {
           console.log(`[PROXY-DEBUG] Requesting tools/list from server: ${serverName}`);
@@ -176,7 +183,7 @@ export const createServer = async (
             maxTotalTimeout,
           };
 
-          const result = await session.client.request(
+          const result = await connection.client.request(
             {
               method: "tools/list",
               params: { _meta: request.params?._meta },
@@ -205,7 +212,7 @@ export const createServer = async (
           const toolsWithSource =
             result.tools?.map((tool) => {
               const toolName = `${sanitizeName(serverName)}__${tool.name}`;
-              toolToClient[toolName] = session;
+              toolToClient[toolName] = connection;
               toolToServerUuid[toolName] = mcpServerUuid;
 
               return {
@@ -257,15 +264,16 @@ export const createServer = async (
 
         // Find the server with the matching name prefix
         for (const [mcpServerUuid, params] of Object.entries(serverParams)) {
-          const session = await mcpServerPool.getSession(
-            sessionId,
+          const connection = await apiKeyConnectionPool.getConnection(
+            _context.apiKey,
             mcpServerUuid,
             params,
-            namespaceUuid,
+            _context.keyUuid,
+            _context.userId,
           );
 
-          if (session) {
-            const capabilities = session.client.getServerCapabilities();
+          if (connection) {
+            const capabilities = connection.client.getServerCapabilities();
             // Don't skip servers without declared tool capabilities - try anyway
             const hasToolCapability = capabilities?.tools;
             if (!hasToolCapability) {
@@ -274,12 +282,12 @@ export const createServer = async (
 
             // Use name assigned by user, fallback to name from server
             const serverName =
-              params.name || session.client.getServerVersion()?.name || "";
+              params.name || connection.client.getServerVersion()?.name || "";
 
             if (sanitizeName(serverName) === serverPrefix) {
               // Found the server, now check if it has this tool
               try {
-                const result = await session.client.request(
+                const result = await connection.client.request(
                   {
                     method: "tools/list",
                     params: {},
@@ -291,9 +299,9 @@ export const createServer = async (
                   result.tools?.some((tool) => tool.name === originalToolName)
                 ) {
                   // Tool exists, populate mappings for future use and use it
-                  clientForTool = session;
+                  clientForTool = connection;
                   serverUuid = mcpServerUuid;
-                  toolToClient[name] = session;
+                  toolToClient[name] = connection;
                   toolToServerUuid[name] = mcpServerUuid;
                   break;
                 }
@@ -471,16 +479,17 @@ export const createServer = async (
 
     await Promise.allSettled(
       validPromptServers.map(async ([uuid, params]) => {
-        const session = await mcpServerPool.getSession(
-          sessionId,
+        const connection = await apiKeyConnectionPool.getConnection(
+          apiKey,
           uuid,
           params,
-          namespaceUuid,
+          keyUuid,
+          userId,
         );
-        if (!session) return;
+        if (!connection) return;
 
         // Now check for self-referencing using the actual MCP server name
-        const serverVersion = session.client.getServerVersion();
+        const serverVersion = connection.client.getServerVersion();
         const actualServerName = serverVersion?.name || params.name || "";
         const ourServerName = `metamcp-unified-${namespaceUuid}`;
 
@@ -491,14 +500,14 @@ export const createServer = async (
           return;
         }
 
-        const capabilities = session.client.getServerCapabilities();
+        const capabilities = connection.client.getServerCapabilities();
         if (!capabilities?.prompts) return;
 
         // Use name assigned by user, fallback to name from server
         const serverName =
-          params.name || session.client.getServerVersion()?.name || "";
+          params.name || connection.client.getServerVersion()?.name || "";
         try {
-          const result = await session.client.request(
+          const result = await connection.client.request(
             {
               method: "prompts/list",
               params: {
@@ -512,7 +521,7 @@ export const createServer = async (
           if (result.prompts) {
             const promptsWithSource = result.prompts.map((prompt) => {
               const promptName = `${sanitizeName(serverName)}__${prompt.name}`;
-              promptToClient[promptName] = session;
+              promptToClient[promptName] = connection;
               return {
                 ...prompt,
                 name: promptName,
@@ -572,16 +581,17 @@ export const createServer = async (
 
     await Promise.allSettled(
       validResourceServers.map(async ([uuid, params]) => {
-        const session = await mcpServerPool.getSession(
-          sessionId,
+        const connection = await apiKeyConnectionPool.getConnection(
+          apiKey,
           uuid,
           params,
-          namespaceUuid,
+          keyUuid,
+          userId,
         );
-        if (!session) return;
+        if (!connection) return;
 
         // Now check for self-referencing using the actual MCP server name
-        const serverVersion = session.client.getServerVersion();
+        const serverVersion = connection.client.getServerVersion();
         const actualServerName = serverVersion?.name || params.name || "";
         const ourServerName = `metamcp-unified-${namespaceUuid}`;
 
@@ -592,14 +602,14 @@ export const createServer = async (
           return;
         }
 
-        const capabilities = session.client.getServerCapabilities();
+        const capabilities = connection.client.getServerCapabilities();
         if (!capabilities?.resources) return;
 
         // Use name assigned by user, fallback to name from server
         const serverName =
-          params.name || session.client.getServerVersion()?.name || "";
+          params.name || connection.client.getServerVersion()?.name || "";
         try {
-          const result = await session.client.request(
+          const result = await connection.client.request(
             {
               method: "resources/list",
               params: {
@@ -612,7 +622,7 @@ export const createServer = async (
 
           if (result.resources) {
             const resourcesWithSource = result.resources.map((resource) => {
-              resourceToClient[resource.uri] = session;
+              resourceToClient[resource.uri] = connection;
               return {
                 ...resource,
                 name: resource.name || "",
@@ -703,16 +713,17 @@ export const createServer = async (
 
       await Promise.allSettled(
         validTemplateServers.map(async ([uuid, params]) => {
-          const session = await mcpServerPool.getSession(
-            sessionId,
+          const connection = await apiKeyConnectionPool.getConnection(
+            apiKey,
             uuid,
             params,
-            namespaceUuid,
+            keyUuid,
+            userId,
           );
-          if (!session) return;
+          if (!connection) return;
 
           // Now check for self-referencing using the actual MCP server name
-          const serverVersion = session.client.getServerVersion();
+          const serverVersion = connection.client.getServerVersion();
           const actualServerName = serverVersion?.name || params.name || "";
           const ourServerName = `metamcp-unified-${namespaceUuid}`;
 
@@ -723,14 +734,14 @@ export const createServer = async (
             return;
           }
 
-          const capabilities = session.client.getServerCapabilities();
+          const capabilities = connection.client.getServerCapabilities();
           if (!capabilities?.resources) return;
 
           const serverName =
             params.name || session.client.getServerVersion()?.name || "";
 
           try {
-            const result = await session.client.request(
+            const result = await connection.client.request(
               {
                 method: "resources/templates/list",
                 params: {
@@ -768,8 +779,8 @@ export const createServer = async (
   );
 
   const cleanup = async () => {
-    // Cleanup is now handled by the pool
-    await mcpServerPool.cleanupSession(sessionId);
+    // Cleanup is now handled by the API key connection pool
+    await apiKeyConnectionPool.cleanupApiKey(apiKey);
   };
 
   return { server, cleanup };

@@ -8,7 +8,9 @@ import {
 // Base context for all handlers
 export interface MetaMCPHandlerContext {
   namespaceUuid: string;
-  sessionId: string;
+  apiKey: string;
+  keyUuid: string;
+  userId?: string;
 }
 
 // Handler function types

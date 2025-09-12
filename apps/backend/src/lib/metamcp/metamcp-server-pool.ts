@@ -33,17 +33,35 @@ export class MetaMcpServerPool {
 
   // Default number of idle servers per namespace UUID
   private readonly defaultIdleCount: number;
+  
+  // Optimized warming configuration for MetaMCP servers
+  private readonly warmingBatchSize: number;
+  private readonly warmingDelayMs: number;
 
-  private constructor(defaultIdleCount: number = 1) {
+  private constructor(
+    defaultIdleCount: number = 1,
+    warmingBatchSize: number = 3,
+    warmingDelayMs: number = 200
+  ) {
     this.defaultIdleCount = defaultIdleCount;
+    this.warmingBatchSize = warmingBatchSize;
+    this.warmingDelayMs = warmingDelayMs;
   }
 
   /**
    * Get the singleton instance
    */
-  static getInstance(defaultIdleCount: number = 1): MetaMcpServerPool {
+  static getInstance(
+    defaultIdleCount: number = 1,
+    warmingBatchSize: number = 3,
+    warmingDelayMs: number = 200
+  ): MetaMcpServerPool {
     if (!MetaMcpServerPool.instance) {
-      MetaMcpServerPool.instance = new MetaMcpServerPool(defaultIdleCount);
+      MetaMcpServerPool.instance = new MetaMcpServerPool(
+        defaultIdleCount,
+        warmingBatchSize,
+        warmingDelayMs
+      );
     }
     return MetaMcpServerPool.instance;
   }
@@ -215,19 +233,51 @@ export class MetaMcpServerPool {
   }
 
   /**
-   * Ensure idle servers exist for all namespaces
+   * Ensure idle servers exist for all namespaces with optimized warming
    */
   async ensureIdleServers(
     namespaceUuids: string[],
     includeInactiveServers: boolean = false,
   ): Promise<void> {
-    const promises = namespaceUuids.map(async (namespaceUuid) => {
-      if (!this.idleServers[namespaceUuid]) {
-        await this.createIdleServer(namespaceUuid, includeInactiveServers);
-      }
-    });
+    const namespacesToWarm = namespaceUuids.filter(
+      (uuid) => !this.idleServers[uuid]
+    );
 
-    await Promise.allSettled(promises);
+    if (namespacesToWarm.length === 0) {
+      return;
+    }
+
+    console.log(
+      `Warming ${namespacesToWarm.length} MetaMCP servers with optimized batching (batch=${this.warmingBatchSize}, delay=${this.warmingDelayMs}ms)`
+    );
+
+    // Process namespaces in smaller batches for MetaMCP servers (more resource-intensive)
+    for (let i = 0; i < namespacesToWarm.length; i += this.warmingBatchSize) {
+      const batch = namespacesToWarm.slice(i, i + this.warmingBatchSize);
+      
+      const batchPromises = batch.map(async (namespaceUuid) => {
+        try {
+          await this.createIdleServer(namespaceUuid, includeInactiveServers);
+        } catch (error) {
+          console.error(
+            `Failed to create idle MetaMCP server for namespace ${namespaceUuid}:`,
+            error
+          );
+        }
+      });
+
+      // Wait for current batch to complete
+      await Promise.allSettled(batchPromises);
+      
+      // Add longer delay between MetaMCP server batches (more resource-intensive)
+      if (i + this.warmingBatchSize < namespacesToWarm.length) {
+        await new Promise(resolve => setTimeout(resolve, this.warmingDelayMs));
+      }
+    }
+
+    console.log(
+      `MetaMCP server pool warming completed: ${Object.keys(this.idleServers).length} idle servers ready`
+    );
   }
 
   /**
@@ -517,5 +567,9 @@ export class MetaMcpServerPool {
   }
 }
 
-// Create a singleton instance
-export const metaMcpServerPool = MetaMcpServerPool.getInstance();
+// Create a singleton instance with optimized warming parameters for MetaMCP servers
+export const metaMcpServerPool = MetaMcpServerPool.getInstance(
+  parseInt(process.env.METAMCP_POOL_IDLE_COUNT || '1'),
+  parseInt(process.env.METAMCP_POOL_WARMING_BATCH_SIZE || '3'),
+  parseInt(process.env.METAMCP_POOL_WARMING_DELAY_MS || '200')
+);

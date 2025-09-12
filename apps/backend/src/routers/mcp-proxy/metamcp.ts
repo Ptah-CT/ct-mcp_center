@@ -3,197 +3,232 @@ import { randomUUID } from "node:crypto";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { randomUUID } from "crypto";
 import express from "express";
 
 import { createServer } from "../../lib/metamcp/index";
-import { mcpServerPool } from "../../lib/metamcp/mcp-server-pool";
 import { betterAuthMcpMiddleware } from "../../middleware/better-auth-mcp.middleware";
+import { ApiKeysRepository } from "../../db/repositories/api-keys.repo";
 
 const metamcpRouter = express.Router();
 
 // Apply better auth middleware to all metamcp routes
 metamcpRouter.use(betterAuthMcpMiddleware);
 
-const webAppTransports: Map<string, Transport> = new Map<string, Transport>(); // Web app transports by sessionId
+const apiKeysRepository = new ApiKeysRepository();
+
+/**
+ * Extract API-Key from request headers
+ * @param req Express request object
+ * @returns API-Key string or undefined if not found
+ */
+function extractApiKey(req: express.Request): string | undefined {
+  // Check X-API-Key header first
+  const apiKeyHeader = req.headers['x-api-key'] as string;
+  if (apiKeyHeader) {
+    return apiKeyHeader;
+  }
+
+  // Check Authorization Bearer token
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+
+  return undefined;
+}
+
+/**
+ * Validate API key and extract authentication context
+ * @param apiKey API key to validate
+ * @returns Promise with authentication context or null if invalid
+ */
+async function validateApiKeyAndGetContext(apiKey: string): Promise<{
+  keyUuid: string;
+  userId?: string;
+} | null> {
+  try {
+    const result = await apiKeysRepository.validateApiKey(apiKey);
+    if (result?.valid) {
+      return {
+        keyUuid: result.key_uuid,
+        userId: result.user_id || undefined,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error validating API key:', error);
+    return null;
+  }
+}
+const webAppTransports: Map<string, Transport> = new Map<string, Transport>(); // Web app transports by API-Key
 const metamcpServers: Map<
   string,
   {
     server: Awaited<ReturnType<typeof createServer>>["server"];
     cleanup: () => Promise<void>;
   }
-> = new Map(); // MetaMCP servers by sessionId
+> = new Map(); // MetaMCP servers by API-Key
 
 // Create a MetaMCP server instance
 const createMetaMcpServer = async (
   namespaceUuid: string,
-  sessionId: string,
+  apiKey: string,
+  keyUuid: string,
+  userId?: string,
   includeInactiveServers: boolean = false,
 ) => {
   const { server, cleanup } = await createServer(
     namespaceUuid,
-    sessionId,
+    apiKey,
+    keyUuid,
+    userId,
     includeInactiveServers,
   );
   return { server, cleanup };
 };
 
-// Cleanup function for a specific session
-const cleanupSession = async (sessionId: string) => {
-  console.log(`Cleaning up session ${sessionId}`);
+// API-Key cleanup function with time-based cleanup
+const cleanupApiKey = async (apiKey: string) => {
+  console.log(`Cleaning up MetaMCP API-Key ${apiKey}`);
 
   // Clean up transport
-  const transport = webAppTransports.get(sessionId);
+  const transport = webAppTransports.get(apiKey);
   if (transport) {
-    webAppTransports.delete(sessionId);
+    webAppTransports.delete(apiKey);
     await transport.close();
   }
 
   // Clean up server instance
-  const serverInstance = metamcpServers.get(sessionId);
+  const serverInstance = metamcpServers.get(apiKey);
   if (serverInstance) {
-    metamcpServers.delete(sessionId);
+    metamcpServers.delete(apiKey);
     await serverInstance.cleanup();
   }
 
-  // Clean up session connections
-  await mcpServerPool.cleanupSession(sessionId);
+  // Clean up session connections from pool - TODO: Convert to API-Key based cleanup when ApiKeyConnectionPool is implemented
+  // For now, we'll skip pool cleanup since we don't have session mapping
+};;
+// Time-based cleanup tracking for MetaMCP
+const transportLastAccess: Map<string, Date> = new Map();
+const CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 minutes
+const MAX_IDLE_TIME = 2 * 60 * 60 * 1000; // 2 hours
+
+// Update last access time for an API-Key
+const updateLastAccess = (apiKey: string) => {
+  transportLastAccess.set(apiKey, new Date());
 };
 
+// Time-based cleanup function for MetaMCP
+const performTimeBasedCleanup = async () => {
+  console.log('Performing MetaMCP time-based transport cleanup...');
+  const now = new Date();
+  const keysToCleanup: string[] = [];
+
+  // Check all tracked API-Keys for idle timeout
+  for (const [apiKey, lastAccess] of transportLastAccess.entries()) {
+    const idleTime = now.getTime() - lastAccess.getTime();
+    if (idleTime > MAX_IDLE_TIME) {
+      keysToCleanup.push(apiKey);
+    }
+  }
+
+  // Cleanup idle transports
+  for (const apiKey of keysToCleanup) {
+    console.log(`Cleaning up idle MetaMCP transport for API-Key: ${apiKey}`);
+    await cleanupApiKey(apiKey);
+    transportLastAccess.delete(apiKey);
+  }
+
+  console.log(`MetaMCP time-based cleanup completed. Cleaned up ${keysToCleanup.length} idle transports.`);
+};
+
+// Start time-based cleanup timer for MetaMCP
+const cleanupTimer = setInterval(performTimeBasedCleanup, CLEANUP_INTERVAL);
+
 metamcpRouter.get("/:uuid/mcp", async (req, res) => {
-  // const namespaceUuid = req.params.uuid;
-  const sessionId = req.headers["mcp-session-id"] as string;
+  const namespaceUuid = req.params.uuid;
+  const apiKey = extractApiKey(req);
+  if (!apiKey) {
+    res.status(401).end("API-Key required");
+    return;
+  }
+
+  // Validate API key and get authentication context
+  const authContext = await validateApiKeyAndGetContext(apiKey);
+  if (!authContext) {
+    res.status(401).end("Invalid API-Key");
+    return;
+  }
   // console.log(
-  //   `Received GET message for MetaMCP namespace ${namespaceUuid} sessionId ${sessionId}`,
+  //   `Received GET message for MetaMCP namespace ${namespaceUuid} API-Key ${apiKey}`,
   // );
   try {
     const transport = webAppTransports.get(
-      sessionId,
+      apiKey,
     ) as StreamableHTTPServerTransport;
     if (!transport) {
-      res.status(404).end("Session not found");
+      res.status(404).end("Transport not found for API-Key");
       return;
     } else {
-      await transport.handleRequest(req, res);
-    }
-  } catch (error) {
-    console.error("Error in MetaMCP /mcp route:", error);
-    res.status(500).json(error);
-  }
-});
-
-metamcpRouter.post("/:uuid/mcp", async (req, res) => {
-  const namespaceUuid = req.params.uuid;
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  let mcpServerInstance:
-    | {
-        server: Awaited<ReturnType<typeof createServer>>["server"];
-        cleanup: () => Promise<void>;
-      }
-    | undefined;
-
-  if (!sessionId) {
-    try {
-      console.log(
-        `New MetaMCP StreamableHttp connection request for namespace ${namespaceUuid}`,
-      );
-
-      const webAppTransport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: randomUUID,
-        onsessioninitialized: async (newSessionId) => {
-          try {
-            // Extract includeInactiveServers from query parameters
-            const includeInactiveServers =
-              req.query.includeInactiveServers === "true";
-
-            // Create MetaMCP server instance with sessionId
-            mcpServerInstance = await createMetaMcpServer(
-              namespaceUuid,
-              newSessionId,
-              includeInactiveServers,
-            );
-            console.log(
-              `Created MetaMCP server instance for session ${newSessionId}`,
-            );
-
-            webAppTransports.set(newSessionId, webAppTransport);
-            metamcpServers.set(newSessionId, mcpServerInstance);
-
-            console.log(
-              `MetaMCP Client <-> Proxy sessionId: ${newSessionId} for namespace ${namespaceUuid}`,
-            );
-
-            await mcpServerInstance.server.connect(webAppTransport);
-
-            // Handle cleanup when connection closes
-            res.on("close", async () => {
-              console.log(
-                `MetaMCP connection closed for session ${newSessionId}`,
-              );
-              await cleanupSession(newSessionId);
-            });
-          } catch (error) {
-            console.error(`Error initializing session ${newSessionId}:`, error);
-          }
-        },
-      });
-      console.log("Created MetaMCP StreamableHttp transport");
-
-      await (webAppTransport as StreamableHTTPServerTransport).handleRequest(
+      updateLastAccess(apiKey);
+      await (transport as StreamableHTTPServerTransport).handleRequest(
         req,
         res,
-        req.body,
       );
-    } catch (error) {
-      console.error("Error in MetaMCP /mcp POST route:", error);
-      res.status(500).json(error);
     }
-  } else {
-    // console.log(
-    //   `Received POST message for MetaMCP namespace ${namespaceUuid} sessionId ${sessionId}`,
-    // );
-    try {
-      const transport = webAppTransports.get(
-        sessionId,
-      ) as StreamableHTTPServerTransport;
-      if (!transport) {
-        res.status(404).end("Transport not found for sessionId " + sessionId);
-      } else {
-        await (transport as StreamableHTTPServerTransport).handleRequest(
-          req,
-          res,
-        );
-      }
-    } catch (error) {
-      console.error("Error in MetaMCP /mcp route:", error);
-      res.status(500).json(error);
-    }
+  } catch (error) {
+    console.error("Error in MetaMCP GET /mcp route:", error);
+    res.status(500).json(error);
   }
 });
 
 metamcpRouter.delete("/:uuid/mcp", async (req, res) => {
   const namespaceUuid = req.params.uuid;
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  const apiKey = extractApiKey(req);
+  
+  if (!apiKey) {
+    res.status(401).end("API-Key required");
+    return;
+  }
+
+  // Validate API key and get authentication context
+  const authContext = await validateApiKeyAndGetContext(apiKey);
+  if (!authContext) {
+    res.status(401).end("Invalid API-Key");
+    return;
+  }
+
   console.log(
-    `Received DELETE message for MetaMCP namespace ${namespaceUuid} sessionId ${sessionId}`,
+    `Received DELETE message for MetaMCP namespace ${namespaceUuid} API-Key ${authContext.keyUuid}`,
   );
 
-  if (sessionId) {
-    try {
-      await cleanupSession(sessionId);
-      console.log(`MetaMCP session ${sessionId} cleaned up successfully`);
-      res.status(200).end();
-    } catch (error) {
-      console.error("Error in MetaMCP /mcp DELETE route:", error);
-      res.status(500).json(error);
-    }
-  } else {
-    res.status(400).end("Missing sessionId");
+  try {
+    await cleanupApiKey(apiKey);
+    console.log(`MetaMCP API-Key ${authContext.keyUuid} cleaned up successfully`);
+    res.status(200).end();
+  } catch (error) {
+    console.error("Error in MetaMCP /mcp DELETE route:", error);
+    res.status(500).json(error);
   }
 });
 
 metamcpRouter.get("/:uuid/sse", async (req, res) => {
   const namespaceUuid = req.params.uuid;
   const includeInactiveServers = req.query.includeInactiveServers === "true";
+  const apiKey = extractApiKey(req);
+  
+  if (!apiKey) {
+    res.status(401).end("API-Key required");
+    return;
+  }
+
+  // Validate API key and get authentication context
+  const authContext = await validateApiKeyAndGetContext(apiKey);
+  if (!authContext) {
+    res.status(401).end("Invalid API-Key");
+    return;
+  }
 
   try {
     console.log(
@@ -206,23 +241,23 @@ metamcpRouter.get("/:uuid/sse", async (req, res) => {
     );
     console.log("Created MetaMCP SSE transport");
 
-    const sessionId = webAppTransport.sessionId;
-
-    // Create MetaMCP server instance with sessionId and includeInactiveServers flag
+    // Create MetaMCP server instance with API key authentication
     const mcpServerInstance = await createMetaMcpServer(
       namespaceUuid,
-      sessionId,
+      apiKey,
+      authContext.keyUuid,
+      authContext.userId,
       includeInactiveServers,
     );
-    console.log(`Created MetaMCP server instance for session ${sessionId}`);
+    console.log(`Created MetaMCP server instance for API key ${authContext.keyUuid}`);
 
-    webAppTransports.set(sessionId, webAppTransport);
-    metamcpServers.set(sessionId, mcpServerInstance);
+    webAppTransports.set(apiKey, webAppTransport);
+    metamcpServers.set(apiKey, mcpServerInstance);
 
     // Handle cleanup when connection closes
     res.on("close", async () => {
-      console.log(`MetaMCP SSE connection closed for session ${sessionId}`);
-      await cleanupSession(sessionId);
+      console.log(`MetaMCP SSE connection closed for API key ${authContext.keyUuid}`);
+      await cleanupApiKey(apiKey);
     });
 
     await mcpServerInstance.server.connect(webAppTransport);
@@ -234,19 +269,33 @@ metamcpRouter.get("/:uuid/sse", async (req, res) => {
 
 metamcpRouter.post("/:uuid/message", async (req, res) => {
   // const namespaceUuid = req.params.uuid;
+  const apiKey = extractApiKey(req);
+  
+  if (!apiKey) {
+    res.status(401).end("API-Key required");
+    return;
+  }
+
+  // Validate API key and get authentication context
+  const authContext = await validateApiKeyAndGetContext(apiKey);
+  if (!authContext) {
+    res.status(401).end("Invalid API-Key");
+    return;
+  }
+
   try {
-    const sessionId = req.query.sessionId;
     // console.log(
-    //   `Received POST message for MetaMCP namespace ${namespaceUuid} sessionId ${sessionId}`,
+    //   `Received POST message for MetaMCP namespace ${namespaceUuid} API-Key ${authContext.keyUuid}`,
     // );
 
     const transport = webAppTransports.get(
-      sessionId as string,
+      apiKey,
     ) as SSEServerTransport;
     if (!transport) {
-      res.status(404).end("Session not found");
+      res.status(404).end("Transport not found for API-Key");
       return;
     }
+    updateLastAccess(apiKey);
     await transport.handlePostMessage(req, res);
   } catch (error) {
     console.error("Error in MetaMCP /message route:", error);

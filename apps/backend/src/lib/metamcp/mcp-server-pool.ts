@@ -31,17 +31,40 @@ export class McpServerPool {
 
   // Default number of idle sessions per server UUID
   private readonly defaultIdleCount: number;
+  
+  // Optimized warming configuration
+  private readonly warmingBatchSize: number;
+  private readonly warmingDelayMs: number;
+  private readonly maxConcurrentConnections: number;
 
-  private constructor(defaultIdleCount: number = 1) {
+  private constructor(
+    defaultIdleCount: number = 1,
+    warmingBatchSize: number = 5,
+    warmingDelayMs: number = 100,
+    maxConcurrentConnections: number = 10
+  ) {
     this.defaultIdleCount = defaultIdleCount;
+    this.warmingBatchSize = warmingBatchSize;
+    this.warmingDelayMs = warmingDelayMs;
+    this.maxConcurrentConnections = maxConcurrentConnections;
   }
 
   /**
    * Get the singleton instance
    */
-  static getInstance(defaultIdleCount: number = 1): McpServerPool {
+  static getInstance(
+    defaultIdleCount: number = 1,
+    warmingBatchSize: number = 5,
+    warmingDelayMs: number = 100,
+    maxConcurrentConnections: number = 10
+  ): McpServerPool {
     if (!McpServerPool.instance) {
-      McpServerPool.instance = new McpServerPool(defaultIdleCount);
+      McpServerPool.instance = new McpServerPool(
+        defaultIdleCount,
+        warmingBatchSize,
+        warmingDelayMs,
+        maxConcurrentConnections
+      );
     }
     return McpServerPool.instance;
   }
@@ -230,21 +253,51 @@ export class McpServerPool {
   }
 
   /**
-   * Ensure idle sessions exist for all servers
+   * Ensure idle sessions exist for all servers with optimized warming
    */
   async ensureIdleSessions(
     serverParams: Record<string, ServerParameters>,
     namespaceUuid?: string,
   ): Promise<void> {
-    const promises = Object.entries(serverParams).map(
-      async ([uuid, params]) => {
-        if (!this.idleSessions[uuid]) {
-          await this.createIdleSession(uuid, params, namespaceUuid);
-        }
-      },
+    const serverEntries = Object.entries(serverParams).filter(
+      ([uuid, _]) => !this.idleSessions[uuid]
     );
 
-    await Promise.allSettled(promises);
+    if (serverEntries.length === 0) {
+      return;
+    }
+
+    console.log(
+      `Warming ${serverEntries.length} MCP server sessions with optimized batching (batch=${this.warmingBatchSize}, delay=${this.warmingDelayMs}ms)`
+    );
+
+    // Process servers in optimized batches to prevent resource exhaustion
+    for (let i = 0; i < serverEntries.length; i += this.warmingBatchSize) {
+      const batch = serverEntries.slice(i, i + this.warmingBatchSize);
+      
+      const batchPromises = batch.map(async ([uuid, params]) => {
+        try {
+          await this.createIdleSession(uuid, params, namespaceUuid);
+        } catch (error) {
+          console.error(
+            `Failed to create idle session for server ${uuid} (${params.name}):`,
+            error
+          );
+        }
+      });
+
+      // Wait for current batch to complete
+      await Promise.allSettled(batchPromises);
+      
+      // Add delay between batches to prevent overwhelming the system
+      if (i + this.warmingBatchSize < serverEntries.length) {
+        await new Promise(resolve => setTimeout(resolve, this.warmingDelayMs));
+      }
+    }
+
+    console.log(
+      `MCP server pool warming completed: ${Object.keys(this.idleSessions).length} idle sessions ready`
+    );
   }
 
   /**
@@ -554,5 +607,10 @@ export class McpServerPool {
   }
 }
 
-// Create a singleton instance
-export const mcpServerPool = McpServerPool.getInstance();
+// Create a singleton instance with optimized warming parameters
+export const mcpServerPool = McpServerPool.getInstance(
+  parseInt(process.env.MCP_POOL_IDLE_COUNT || '1'),
+  parseInt(process.env.MCP_POOL_WARMING_BATCH_SIZE || '5'),
+  parseInt(process.env.MCP_POOL_WARMING_DELAY_MS || '100'),
+  parseInt(process.env.MCP_POOL_MAX_CONCURRENT || '10')
+);
