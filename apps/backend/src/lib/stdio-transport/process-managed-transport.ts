@@ -59,9 +59,82 @@ export const DEFAULT_INHERITED_ENV_VARS =
         "USERNAME",
         "USERPROFILE",
         "PROGRAMFILES",
+        // Python environment variables
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "VIRTUAL_ENV",
+        "CONDA_DEFAULT_ENV",
+        "CONDA_PREFIX",
+        "CONDA_PYTHON_EXE",
+        "UV_CACHE_DIR",
+        "UV_CONFIG_FILE",
+        "PIP_CONFIG_FILE",
+        "PIP_CACHE_DIR",
+        // Node.js environment variables
+        "NODE_PATH",
+        "NPM_CONFIG_PREFIX",
+        "PNPM_HOME",
+        "NVM_DIR",
+        "NVM_CD_FLAGS",
+        "NVM_BIN",
+        // Locale and development variables
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TMPDIR",
+        "TMP",
+        "XDG_CACHE_HOME",
+        "XDG_CONFIG_HOME",
+        "XDG_DATA_HOME",
+        "XDG_RUNTIME_DIR",
       ]
-    : /* list inspired by the default env inheritance of sudo */
-      ["HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER"];
+    : /* expanded list for comprehensive environment support */
+      [
+        // Basic system variables
+        "HOME",
+        "LOGNAME", 
+        "PATH",
+        "SHELL",
+        "TERM",
+        "USER",
+        // Python environment variables
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "VIRTUAL_ENV",
+        "CONDA_DEFAULT_ENV",
+        "CONDA_PREFIX",
+        "CONDA_PYTHON_EXE",
+        "UV_CACHE_DIR",
+        "UV_CONFIG_FILE",
+        "PIP_CONFIG_FILE",
+        "PIP_CACHE_DIR",
+        // Node.js environment variables  
+        "NODE_PATH",
+        "NPM_CONFIG_PREFIX",
+        "PNPM_HOME",
+        "NVM_DIR",
+        "NVM_CD_FLAGS",
+        "NVM_BIN",
+        // Locale and development variables
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TMPDIR",
+        "XDG_CACHE_HOME",
+        "XDG_CONFIG_HOME", 
+        "XDG_DATA_HOME",
+        "XDG_RUNTIME_DIR",
+        // Additional development variables
+        "EDITOR",
+        "VISUAL",
+        "PAGER",
+        "MANPATH",
+        "LD_LIBRARY_PATH",
+        "PKG_CONFIG_PATH",
+        // Git environment
+        "GIT_CONFIG_GLOBAL",
+        "GIT_CONFIG_SYSTEM",
+      ];
 
 /**
  * Returns a default environment object including only environment variables deemed safe to inherit.
@@ -135,7 +208,7 @@ export class ProcessManagedStdioTransport implements Transport {
           shell: false,
           signal: this._abortController.signal,
           windowsHide: process.platform === "win32" && isElectron(),
-          cwd: this._serverParams.cwd,
+          cwd: this._serverParams.cwd || process.cwd(),
           detached: true,
         },
       );
@@ -149,6 +222,17 @@ export class ProcessManagedStdioTransport implements Transport {
           this.onclose?.();
           return;
         }
+
+        console.error(`Failed to spawn MCP server process:`, {
+          command: this._serverParams.command,
+          args: this._serverParams.args,
+          cwd: this._serverParams.cwd || process.cwd(),
+          error: error.message,
+          env: Object.keys({
+            ...getDefaultEnvironment(),
+            ...this._serverParams.env,
+          }).join(', ')
+        });
 
         reject(error);
         this.onerror?.(error);
