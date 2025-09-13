@@ -23,10 +23,10 @@ const OAuthCallback = () => {
 
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
-      const serverUrl = sessionStorage.getItem(SESSION_KEYS.SERVER_URL);
-      const mcpServerUuid = sessionStorage.getItem(
+      const serverUrl = typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_KEYS.SERVER_URL) : null;
+      const mcpServerUuid = typeof window !== 'undefined' ? sessionStorage.getItem(
         SESSION_KEYS.MCP_SERVER_UUID,
-      );
+      ) : null;
 
       if (!code || !serverUrl || !mcpServerUuid) {
         console.error("Missing required OAuth parameters");
@@ -61,9 +61,9 @@ const OAuthCallback = () => {
           serverUrl,
         );
 
-        const clientInformation = sessionStorage.getItem(clientInformationKey);
-        const tokens = sessionStorage.getItem(tokensKey);
-        const codeVerifier = sessionStorage.getItem(codeVerifierKey);
+        const clientInformation = typeof window !== 'undefined' ? sessionStorage.getItem(clientInformationKey) : null;
+        const tokens = typeof window !== 'undefined' ? sessionStorage.getItem(tokensKey) : null;
+        const codeVerifier = typeof window !== 'undefined' ? sessionStorage.getItem(codeVerifierKey) : null;
 
         // Save OAuth session in database using tRPC
         await vanillaTrpcClient.frontend.oauth.upsert.mutate({
@@ -76,11 +76,13 @@ const OAuthCallback = () => {
         });
 
         // Clean up session storage
-        sessionStorage.removeItem(clientInformationKey);
-        sessionStorage.removeItem(tokensKey);
-        sessionStorage.removeItem(codeVerifierKey);
-        sessionStorage.removeItem(SESSION_KEYS.SERVER_URL);
-        sessionStorage.removeItem(SESSION_KEYS.MCP_SERVER_UUID);
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          sessionStorage.removeItem(clientInformationKey);
+          sessionStorage.removeItem(tokensKey);
+          sessionStorage.removeItem(codeVerifierKey);
+          sessionStorage.removeItem(SESSION_KEYS.SERVER_URL);
+          sessionStorage.removeItem(SESSION_KEYS.MCP_SERVER_UUID);
+        }
 
         // Redirect back to the MCP server detail page
         window.location.href = `/mcp-servers/${mcpServerUuid}`;
