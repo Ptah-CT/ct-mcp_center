@@ -126,32 +126,37 @@ export class ToolResponseCache {
         
         // FAIL FAST: Test connection immediately
         await this.redis.ping();
-        logger.info("Redis connection validated successfully");
+        logger.info("Upstash Redis connection validated successfully");
+        
+        // NOTE: Upstash REST API does not support .on() event handlers
+        // Event handlers are only available for traditional TCP connections
+        
       } else {
-        // Fallback to traditional Redis
+        // Fallback to traditional Redis with TCP connection
         this.redis = new Redis(redisUrl, {
           retryDelayOnFailover: 100,
           maxRetriesPerRequest: 3,
           lazyConnect: true
         });
-        logger.info("Using traditional Redis connection");
+        logger.info("Using traditional Redis TCP connection");
         
         // FAIL FAST: Test connection immediately
         await this.redis.ping();
-        logger.info("Redis connection validated successfully");
+        logger.info("Traditional Redis connection validated successfully");
+        
+        // Event handlers only for traditional Redis TCP connections
+        this.redis.on('connect', () => {
+          logger.info("Redis TCP cache connected successfully");
+        });
+        
+        this.redis.on('error', (error: Error) => {
+          logger.error("Redis TCP cache error", error);
+          // FAIL LOUD: Critical Redis errors should be visible
+          if (process.env.NODE_ENV === 'production') {
+            logger.error("CRITICAL: Redis TCP connection lost in production", error);
+          }
+        });
       }
-      
-      this.redis.on('connect', () => {
-        logger.info("Redis cache connected successfully");
-      });
-      
-      this.redis.on('error', (error: Error) => {
-        logger.error("Redis cache error", error);
-        // FAIL LOUD: Critical Redis errors should be visible
-        if (process.env.NODE_ENV === 'production') {
-          logger.error("CRITICAL: Redis connection lost in production", error);
-        }
-      });
       
     } catch (error) {
       // FAIL LOUD: Redis is configured but not working

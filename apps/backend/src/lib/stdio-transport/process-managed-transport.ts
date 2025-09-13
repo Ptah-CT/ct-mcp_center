@@ -209,12 +209,12 @@ export class ProcessManagedStdioTransport implements Transport {
           signal: this._abortController.signal,
           windowsHide: process.platform === "win32" && isElectron(),
           cwd: this._serverParams.cwd || process.cwd(),
-          detached: true,
+          detached: false, // Change to false to prevent orphaned processes
         },
       );
 
-      // Unref the child process so it doesn't keep the parent alive
-      this._process.unref();
+      // Keep process reference to maintain control over lifecycle
+      // this._process.unref(); // Commented out to prevent uncontrolled spawning
 
       this._process.on("error", (error) => {
         if (error.name === "AbortError") {
