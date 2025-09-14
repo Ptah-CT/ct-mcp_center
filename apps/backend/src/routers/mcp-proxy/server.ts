@@ -210,12 +210,22 @@ serverRouter.get("/stdio", async (req, res) => {
     // Create SSE server transport
     const sseTransport = new SSEServerTransport("/stdio", transport);
     
-    // Handle the SSE connection
+    console.log(`Attempting to handle SSE connection for: ${command} ${parsedArgs.join(" ")}`);
+    
+    // Handle the SSE connection with enhanced error logging
     await sseTransport.handleSSEConnection(req, res);
     
   } catch (error) {
     console.error("Error in STDIO SSE endpoint:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    console.error("Error details:", { 
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      cause: error instanceof Error ? error.cause : undefined
+    });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error", details: error instanceof Error ? error.message : String(error) });
+    }
   }
 });
 
