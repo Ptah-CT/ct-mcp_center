@@ -263,13 +263,28 @@ export function useConnection({
       const proxyHealthResponse = await fetch(proxyHealthUrl, {
         credentials: "include", // Ensure cookies are sent
       });
+      
+      // Handle authentication errors - don't block connection
+      if (proxyHealthResponse.status === 401) {
+        console.warn("Proxy health check returned 401 - authentication may be required");
+        return; // Don't throw, let transport handle auth
+      }
+      
+      // Only try to parse JSON if content-type indicates JSON
+      const contentType = proxyHealthResponse.headers.get("content-type");
+      if (!contentType?.includes("application/json")) {
+        console.warn("Proxy health check returned non-JSON response");
+        return; // Don't throw, let transport handle
+      }
+      
       const proxyHealth = await proxyHealthResponse.json();
       if (proxyHealth?.status !== "ok") {
-        throw new Error("MCP Proxy Server is not healthy");
+        console.warn("Proxy health check returned non-ok status:", proxyHealth);
+        return; // Don't throw, let transport handle
       }
     } catch (e) {
-      console.error("Couldn't connect to MCP Proxy Server", e);
-      throw e;
+      console.warn("Proxy health check failed, proceeding with transport connection:", e);
+      // Don't throw - let the transport connection handle its own errors
     }
   });
 
@@ -346,12 +361,8 @@ export function useConnection({
         },
       );
 
-      try {
-        await checkProxyHealth();
-      } catch {
-        setConnectionStatus("error-connecting-to-proxy");
-        return;
-      }
+      // Non-blocking health check - won't throw errors
+      await checkProxyHealth();
 
       try {
         // Inject auth manually instead of using SSEClientTransport, because we're
