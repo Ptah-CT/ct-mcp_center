@@ -41,6 +41,7 @@ export class NamespacesSerializer {
         description: server.description,
         type: server.type,
         command: server.command,
+        cwd: server.cwd,
         args: server.args || [],
         url: server.url,
         env: server.env || {},
