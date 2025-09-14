@@ -1,14 +1,11 @@
-import { randomUUID } from "node:crypto";
-
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { randomUUID } from "crypto";
 import express from "express";
 
+import { ApiKeysRepository } from "../../db/repositories/api-keys.repo";
 import { createServer } from "../../lib/metamcp/index";
 import { betterAuthMcpMiddleware } from "../../middleware/better-auth-mcp.middleware";
-import { ApiKeysRepository } from "../../db/repositories/api-keys.repo";
 
 const metamcpRouter = express.Router();
 
@@ -24,14 +21,14 @@ const apiKeysRepository = new ApiKeysRepository();
  */
 function extractApiKey(req: express.Request): string | undefined {
   // Check X-API-Key header first
-  const apiKeyHeader = req.headers['x-api-key'] as string;
+  const apiKeyHeader = req.headers["x-api-key"] as string;
   if (apiKeyHeader) {
     return apiKeyHeader;
   }
 
   // Check Authorization Bearer token
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith("Bearer ")) {
     return authHeader.substring(7);
   }
 
@@ -57,7 +54,7 @@ async function validateApiKeyAndGetContext(apiKey: string): Promise<{
     }
     return null;
   } catch (error) {
-    console.error('Error validating API key:', error);
+    console.error("Error validating API key:", error);
     return null;
   }
 }
@@ -108,7 +105,7 @@ const cleanupApiKey = async (apiKey: string) => {
 
   // Clean up session connections from pool - TODO: Convert to API-Key based cleanup when ApiKeyConnectionPool is implemented
   // For now, we'll skip pool cleanup since we don't have session mapping
-};;
+};
 // Time-based cleanup tracking for MetaMCP
 const transportLastAccess: Map<string, Date> = new Map();
 const CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 minutes
@@ -121,7 +118,7 @@ const updateLastAccess = (apiKey: string) => {
 
 // Time-based cleanup function for MetaMCP
 const performTimeBasedCleanup = async () => {
-  console.log('Performing MetaMCP time-based transport cleanup...');
+  console.log("Performing MetaMCP time-based transport cleanup...");
   const now = new Date();
   const keysToCleanup: string[] = [];
 
@@ -140,7 +137,9 @@ const performTimeBasedCleanup = async () => {
     transportLastAccess.delete(apiKey);
   }
 
-  console.log(`MetaMCP time-based cleanup completed. Cleaned up ${keysToCleanup.length} idle transports.`);
+  console.log(
+    `MetaMCP time-based cleanup completed. Cleaned up ${keysToCleanup.length} idle transports.`,
+  );
 };
 
 // Start time-based cleanup timer for MetaMCP
@@ -186,7 +185,7 @@ metamcpRouter.get("/:uuid/mcp", async (req, res) => {
 metamcpRouter.delete("/:uuid/mcp", async (req, res) => {
   const namespaceUuid = req.params.uuid;
   const apiKey = extractApiKey(req);
-  
+
   if (!apiKey) {
     res.status(401).end("API-Key required");
     return;
@@ -205,7 +204,9 @@ metamcpRouter.delete("/:uuid/mcp", async (req, res) => {
 
   try {
     await cleanupApiKey(apiKey);
-    console.log(`MetaMCP API-Key ${authContext.keyUuid} cleaned up successfully`);
+    console.log(
+      `MetaMCP API-Key ${authContext.keyUuid} cleaned up successfully`,
+    );
     res.status(200).end();
   } catch (error) {
     console.error("Error in MetaMCP /mcp DELETE route:", error);
@@ -217,7 +218,7 @@ metamcpRouter.get("/:uuid/sse", async (req, res) => {
   const namespaceUuid = req.params.uuid;
   const includeInactiveServers = req.query.includeInactiveServers === "true";
   const apiKey = extractApiKey(req);
-  
+
   if (!apiKey) {
     res.status(401).end("API-Key required");
     return;
@@ -249,14 +250,18 @@ metamcpRouter.get("/:uuid/sse", async (req, res) => {
       authContext.userId,
       includeInactiveServers,
     );
-    console.log(`Created MetaMCP server instance for API key ${authContext.keyUuid}`);
+    console.log(
+      `Created MetaMCP server instance for API key ${authContext.keyUuid}`,
+    );
 
     webAppTransports.set(apiKey, webAppTransport);
     metamcpServers.set(apiKey, mcpServerInstance);
 
     // Handle cleanup when connection closes
     res.on("close", async () => {
-      console.log(`MetaMCP SSE connection closed for API key ${authContext.keyUuid}`);
+      console.log(
+        `MetaMCP SSE connection closed for API key ${authContext.keyUuid}`,
+      );
       await cleanupApiKey(apiKey);
     });
 
@@ -270,7 +275,7 @@ metamcpRouter.get("/:uuid/sse", async (req, res) => {
 metamcpRouter.post("/:uuid/message", async (req, res) => {
   // const namespaceUuid = req.params.uuid;
   const apiKey = extractApiKey(req);
-  
+
   if (!apiKey) {
     res.status(401).end("API-Key required");
     return;
@@ -288,9 +293,7 @@ metamcpRouter.post("/:uuid/message", async (req, res) => {
     //   `Received POST message for MetaMCP namespace ${namespaceUuid} API-Key ${authContext.keyUuid}`,
     // );
 
-    const transport = webAppTransports.get(
-      apiKey,
-    ) as SSEServerTransport;
+    const transport = webAppTransports.get(apiKey) as SSEServerTransport;
     if (!transport) {
       res.status(404).end("Transport not found for API-Key");
       return;

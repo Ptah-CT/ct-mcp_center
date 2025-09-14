@@ -52,7 +52,8 @@ export default function McpServerDetailPage({
     useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false);
-  const [showResetErrorStatusDialog, setShowResetErrorStatusDialog] = useState<boolean>(false);
+  const [showResetErrorStatusDialog, setShowResetErrorStatusDialog] =
+    useState<boolean>(false);
 
   // Function to toggle env var visibility
   const toggleEnvVarVisibility = (key: string) => {
@@ -113,30 +114,32 @@ export default function McpServerDetailPage({
   });
 
   // tRPC mutation for resetting error status
-  const resetErrorStatusMutation = trpc.frontend.mcpServers.resetErrorStatus.useMutation({
-    onSuccess: (result) => {
-      if (result.success) {
-        // Invalidate cache to get fresh data
-        utils.frontend.mcpServers.get.invalidate({ uuid });
-        utils.frontend.mcpServers.list.invalidate();
-        toast.success(t("mcp-servers:detail.resetErrorStatusSuccess"));
-        setShowResetErrorStatusDialog(false);
-      } else {
-        console.error("Reset error status failed:", result.message);
+  const resetErrorStatusMutation =
+    trpc.frontend.mcpServers.resetErrorStatus.useMutation({
+      onSuccess: (result) => {
+        if (result.success) {
+          // Invalidate cache to get fresh data
+          utils.frontend.mcpServers.get.invalidate({ uuid });
+          utils.frontend.mcpServers.list.invalidate();
+          toast.success(t("mcp-servers:detail.resetErrorStatusSuccess"));
+          setShowResetErrorStatusDialog(false);
+        } else {
+          console.error("Reset error status failed:", result.message);
+          toast.error(t("mcp-servers:detail.resetErrorStatusError"), {
+            description:
+              result.message || t("mcp-servers:detail.resetErrorStatusError"),
+          });
+          setShowResetErrorStatusDialog(false);
+        }
+      },
+      onError: (error) => {
+        console.error("Error resetting server error status:", error);
         toast.error(t("mcp-servers:detail.resetErrorStatusError"), {
-          description: result.message || t("mcp-servers:detail.resetErrorStatusError"),
+          description: error.message,
         });
         setShowResetErrorStatusDialog(false);
-      }
-    },
-    onError: (error) => {
-      console.error("Error resetting server error status:", error);
-      toast.error(t("mcp-servers:detail.resetErrorStatusError"), {
-        description: error.message,
-      });
-      setShowResetErrorStatusDialog(false);
-    },
-  });
+      },
+    });
 
   const server: McpServer | undefined = serverResponse?.success
     ? serverResponse.data
@@ -417,7 +420,10 @@ export default function McpServerDetailPage({
       </Dialog>
 
       {/* Reset Error Status Confirmation Dialog */}
-      <Dialog open={showResetErrorStatusDialog} onOpenChange={setShowResetErrorStatusDialog}>
+      <Dialog
+        open={showResetErrorStatusDialog}
+        onOpenChange={setShowResetErrorStatusDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>

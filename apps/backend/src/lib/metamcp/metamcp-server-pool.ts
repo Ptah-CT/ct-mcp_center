@@ -33,7 +33,7 @@ export class MetaMcpServerPool {
 
   // Default number of idle servers per namespace UUID
   private readonly defaultIdleCount: number;
-  
+
   // Optimized warming configuration for MetaMCP servers
   private readonly warmingBatchSize: number;
   private readonly warmingDelayMs: number;
@@ -41,7 +41,7 @@ export class MetaMcpServerPool {
   private constructor(
     defaultIdleCount: number = 1,
     warmingBatchSize: number = 3,
-    warmingDelayMs: number = 200
+    warmingDelayMs: number = 200,
   ) {
     this.defaultIdleCount = defaultIdleCount;
     this.warmingBatchSize = warmingBatchSize;
@@ -54,13 +54,13 @@ export class MetaMcpServerPool {
   static getInstance(
     defaultIdleCount: number = 1,
     warmingBatchSize: number = 3,
-    warmingDelayMs: number = 200
+    warmingDelayMs: number = 200,
   ): MetaMcpServerPool {
     if (!MetaMcpServerPool.instance) {
       MetaMcpServerPool.instance = new MetaMcpServerPool(
         defaultIdleCount,
         warmingBatchSize,
-        warmingDelayMs
+        warmingDelayMs,
       );
     }
     return MetaMcpServerPool.instance;
@@ -240,7 +240,7 @@ export class MetaMcpServerPool {
     includeInactiveServers: boolean = false,
   ): Promise<void> {
     const namespacesToWarm = namespaceUuids.filter(
-      (uuid) => !this.idleServers[uuid]
+      (uuid) => !this.idleServers[uuid],
     );
 
     if (namespacesToWarm.length === 0) {
@@ -248,35 +248,37 @@ export class MetaMcpServerPool {
     }
 
     console.log(
-      `Warming ${namespacesToWarm.length} MetaMCP servers with optimized batching (batch=${this.warmingBatchSize}, delay=${this.warmingDelayMs}ms)`
+      `Warming ${namespacesToWarm.length} MetaMCP servers with optimized batching (batch=${this.warmingBatchSize}, delay=${this.warmingDelayMs}ms)`,
     );
 
     // Process namespaces in smaller batches for MetaMCP servers (more resource-intensive)
     for (let i = 0; i < namespacesToWarm.length; i += this.warmingBatchSize) {
       const batch = namespacesToWarm.slice(i, i + this.warmingBatchSize);
-      
+
       const batchPromises = batch.map(async (namespaceUuid) => {
         try {
           await this.createIdleServer(namespaceUuid, includeInactiveServers);
         } catch (error) {
           console.error(
             `Failed to create idle MetaMCP server for namespace ${namespaceUuid}:`,
-            error
+            error,
           );
         }
       });
 
       // Wait for current batch to complete
       await Promise.allSettled(batchPromises);
-      
+
       // Add longer delay between MetaMCP server batches (more resource-intensive)
       if (i + this.warmingBatchSize < namespacesToWarm.length) {
-        await new Promise(resolve => setTimeout(resolve, this.warmingDelayMs));
+        await new Promise((resolve) =>
+          setTimeout(resolve, this.warmingDelayMs),
+        );
       }
     }
 
     console.log(
-      `MetaMCP server pool warming completed: ${Object.keys(this.idleServers).length} idle servers ready`
+      `MetaMCP server pool warming completed: ${Object.keys(this.idleServers).length} idle servers ready`,
     );
   }
 
@@ -569,7 +571,7 @@ export class MetaMcpServerPool {
 
 // Create a singleton instance with optimized warming parameters for MetaMCP servers
 export const metaMcpServerPool = MetaMcpServerPool.getInstance(
-  parseInt(process.env.METAMCP_POOL_IDLE_COUNT || '1'),
-  parseInt(process.env.METAMCP_POOL_WARMING_BATCH_SIZE || '3'),
-  parseInt(process.env.METAMCP_POOL_WARMING_DELAY_MS || '200')
+  parseInt(process.env.METAMCP_POOL_IDLE_COUNT || "1"),
+  parseInt(process.env.METAMCP_POOL_WARMING_BATCH_SIZE || "3"),
+  parseInt(process.env.METAMCP_POOL_WARMING_DELAY_MS || "200"),
 );

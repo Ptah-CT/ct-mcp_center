@@ -24,9 +24,9 @@ import { z } from "zod";
 import { toolsImplementations } from "../../trpc/tools.impl";
 import { configService } from "../config.service";
 import { logger } from "../logging/logfire";
+import { apiKeyConnectionPool } from "./api-key-connection-pool";
 import { ConnectedClient } from "./client";
 import { getMcpServers } from "./fetch-metamcp";
-import { apiKeyConnectionPool } from "./api-key-connection-pool";
 import {
   createFilterCallToolMiddleware,
   createFilterListToolsMiddleware,
@@ -67,7 +67,10 @@ export const createServer = async (
       const urlString = params.url.toLowerCase();
       // Check if URL points to our own server (port 23456 or metamcp path)
       // But allow ct_dev-endpoint since it's our proxy endpoint that should expose bundled tools
-      if ((urlString.includes(':23456') || urlString.includes('/metamcp/')) && params.name !== "ct_dev-endpoint") {
+      if (
+        (urlString.includes(":23456") || urlString.includes("/metamcp/")) &&
+        params.name !== "ct_dev-endpoint"
+      ) {
         logger.info(
           `Skipping self-referencing HTTP server: "${params.name}" with URL: ${params.url}`,
         );
@@ -105,12 +108,19 @@ export const createServer = async (
     request,
     context,
   ) => {
-    logger.debug(`originalListToolsHandler called for namespace: ${context.namespaceUuid}`);
+    logger.debug(
+      `originalListToolsHandler called for namespace: ${context.namespaceUuid}`,
+    );
     const serverParams = await getMcpServers(
       context.namespaceUuid,
       includeInactiveServers,
     );
-    logger.debug(`Found ${Object.keys(serverParams).length} servers`, { servers: Object.keys(serverParams).map(uuid => ({ uuid, name: serverParams[uuid]?.name })) });
+    logger.debug(`Found ${Object.keys(serverParams).length} servers`, {
+      servers: Object.keys(serverParams).map((uuid) => ({
+        uuid,
+        name: serverParams[uuid]?.name,
+      })),
+    });
     const allTools: Tool[] = [];
 
     // Track visited servers to detect circular references - reset on each call
@@ -148,22 +158,31 @@ export const createServer = async (
 
         // Check basic self-reference patterns, but allow ct_dev-endpoint for tools listing
         // since it's our proxy endpoint that should expose its bundled tools
-        if (isSameServerInstance(params, mcpServerUuid) && params.name !== "ct_dev-endpoint") {
+        if (
+          isSameServerInstance(params, mcpServerUuid) &&
+          params.name !== "ct_dev-endpoint"
+        ) {
           return;
         }
 
         // Mark this server as visited
         visitedServers.add(mcpServerUuid);
 
-        console.log(`[PROXY-DEBUG] Processing server: ${params.name} (${mcpServerUuid})`);
+        console.log(
+          `[PROXY-DEBUG] Processing server: ${params.name} (${mcpServerUuid})`,
+        );
         const capabilities = connection.client.getServerCapabilities();
         // Don't skip servers without declared tool capabilities - try to list tools anyway
         // Some MCP servers don't declare capabilities.tools but still support tools/list
         const hasToolCapability = capabilities?.tools;
         if (!hasToolCapability) {
-          console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list anyway`);
+          console.log(
+            `Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list anyway`,
+          );
         } else {
-          console.log(`[PROXY-DEBUG] Server ${params.name} declares tool capabilities: ${JSON.stringify(capabilities.tools)}`);
+          console.log(
+            `[PROXY-DEBUG] Server ${params.name} declares tool capabilities: ${JSON.stringify(capabilities.tools)}`,
+          );
         }
 
         // Use name assigned by user, fallback to name from server
@@ -171,9 +190,12 @@ export const createServer = async (
           params.name || connection.client.getServerVersion()?.name || "";
 
         try {
-          console.log(`[PROXY-DEBUG] Requesting tools/list from server: ${serverName}`);
+          console.log(
+            `[PROXY-DEBUG] Requesting tools/list from server: ${serverName}`,
+          );
           // Get configurable timeout values to prevent tools from being lost due to timeouts
-          const resetTimeoutOnProgress = await configService.getMcpResetTimeoutOnProgress();
+          const resetTimeoutOnProgress =
+            await configService.getMcpResetTimeoutOnProgress();
           const timeout = await configService.getMcpTimeout();
           const maxTotalTimeout = await configService.getMcpMaxTotalTimeout();
 
@@ -192,7 +214,9 @@ export const createServer = async (
             mcpRequestOptions,
           );
 
-          console.log(`[PROXY-DEBUG] tools/list response from ${serverName}: ${result.tools?.length || 0} tools`);
+          console.log(
+            `[PROXY-DEBUG] tools/list response from ${serverName}: ${result.tools?.length || 0} tools`,
+          );
 
           // Save original tools to database
           if (result.tools && result.tools.length > 0) {
@@ -222,10 +246,15 @@ export const createServer = async (
               };
             }) || [];
 
-          console.log(`[PROXY-DEBUG] Adding ${toolsWithSource.length} tools from ${serverName} to allTools`);
+          console.log(
+            `[PROXY-DEBUG] Adding ${toolsWithSource.length} tools from ${serverName} to allTools`,
+          );
           allTools.push(...toolsWithSource);
         } catch (error) {
-          console.error(`[PROXY-DEBUG] Error fetching tools from: ${serverName}`, error);
+          console.error(
+            `[PROXY-DEBUG] Error fetching tools from: ${serverName}`,
+            error,
+          );
         }
       }),
     );
@@ -277,7 +306,9 @@ export const createServer = async (
             // Don't skip servers without declared tool capabilities - try anyway
             const hasToolCapability = capabilities?.tools;
             if (!hasToolCapability) {
-              console.log(`Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list for dynamic discovery`);
+              console.log(
+                `Server ${params.name || mcpServerUuid} doesn't declare tool capabilities, but trying tools/list for dynamic discovery`,
+              );
             }
 
             // Use name assigned by user, fallback to name from server

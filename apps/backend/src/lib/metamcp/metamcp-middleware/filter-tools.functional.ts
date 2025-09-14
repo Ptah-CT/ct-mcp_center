@@ -192,29 +192,43 @@ async function filterActiveTools(
   await Promise.allSettled(
     tools.map(async (tool, index) => {
       try {
-        logger.debug(`[FILTER-DEBUG] Tool ${index + 1}/${tools.length}: ${tool.name} - Starting processing`);
-        
+        logger.debug(
+          `[FILTER-DEBUG] Tool ${index + 1}/${tools.length}: ${tool.name} - Starting processing`,
+        );
+
         const parsed = parseToolName(tool.name);
         if (!parsed) {
           // If tool name doesn't follow expected format, include it
-          logger.warn(`Tool ${tool.name} doesn't follow expected naming format (serverName__toolName), including anyway`);
-          logger.debug(`[FILTER-DEBUG] Tool ${tool.name} - INCLUDED (no parse)`);
+          logger.warn(
+            `Tool ${tool.name} doesn't follow expected naming format (serverName__toolName), including anyway`,
+          );
+          logger.debug(
+            `[FILTER-DEBUG] Tool ${tool.name} - INCLUDED (no parse)`,
+          );
           activeTools.push(tool);
           return;
         }
 
-        logger.debug(`[FILTER-DEBUG] Tool ${tool.name} - Parsed as server: ${parsed.serverName}, original: ${parsed.originalToolName}`);
+        logger.debug(
+          `[FILTER-DEBUG] Tool ${tool.name} - Parsed as server: ${parsed.serverName}, original: ${parsed.originalToolName}`,
+        );
 
         const serverUuid = await getServerUuidByName(parsed.serverName);
         if (!serverUuid) {
           // If server not found, include the tool (fallback behavior)
-          logger.warn(`Server UUID not found for server name '${parsed.serverName}' (tool: ${tool.name}), including tool anyway`);
-          logger.debug(`[FILTER-DEBUG] Tool ${tool.name} - INCLUDED (no server UUID)`);
+          logger.warn(
+            `Server UUID not found for server name '${parsed.serverName}' (tool: ${tool.name}), including tool anyway`,
+          );
+          logger.debug(
+            `[FILTER-DEBUG] Tool ${tool.name} - INCLUDED (no server UUID)`,
+          );
           activeTools.push(tool);
           return;
         }
 
-        logger.debug(`[FILTER-DEBUG] Tool ${tool.name} - Server UUID: ${serverUuid}`);
+        logger.debug(
+          `[FILTER-DEBUG] Tool ${tool.name} - Server UUID: ${serverUuid}`,
+        );
 
         const status = await getToolStatus(
           namespaceUuid,
@@ -223,21 +237,31 @@ async function filterActiveTools(
           useCache,
         );
 
-        logger.debug(`[FILTER-DEBUG] Tool ${tool.name} - Status check result: ${status}`);
+        logger.debug(
+          `[FILTER-DEBUG] Tool ${tool.name} - Status check result: ${status}`,
+        );
 
         // If no mapping exists or tool is active, include it
         // Default behavior: if no explicit mapping exists, allow the tool (fail-open)
         if (status === null || status === "ACTIVE") {
-          logger.debug(`[FILTER-DEBUG] Tool ${tool.name} - INCLUDED (status: ${status})`);
+          logger.debug(
+            `[FILTER-DEBUG] Tool ${tool.name} - INCLUDED (status: ${status})`,
+          );
           activeTools.push(tool);
         } else {
-          logger.debug(`Tool ${tool.name} filtered out (status: ${status}) in namespace ${namespaceUuid}`);
-          logger.debug(`[FILTER-DEBUG] Tool ${tool.name} - FILTERED OUT (status: ${status})`);
+          logger.debug(
+            `Tool ${tool.name} filtered out (status: ${status}) in namespace ${namespaceUuid}`,
+          );
+          logger.debug(
+            `[FILTER-DEBUG] Tool ${tool.name} - FILTERED OUT (status: ${status})`,
+          );
         }
         // If status is "INACTIVE", tool is filtered out
       } catch (error) {
         console.error(`Error checking tool status for ${tool.name}:`, error);
-        logger.debug(`[FILTER-DEBUG] Tool ${tool.name} - INCLUDED (error occurred)`);
+        logger.debug(
+          `[FILTER-DEBUG] Tool ${tool.name} - INCLUDED (error occurred)`,
+        );
         // On error, include the tool (fail-safe behavior)
         activeTools.push(tool);
       }
@@ -277,7 +301,9 @@ async function isToolAllowed(
     }
 
     // Tool is inactive
-    console.log(`Tool ${toolName} blocked (status: ${status}) in namespace ${namespaceUuid}`);
+    console.log(
+      `Tool ${toolName} blocked (status: ${status}) in namespace ${namespaceUuid}`,
+    );
     return {
       allowed: false,
       reason: "Tool has been marked as inactive in this namespace",
@@ -302,10 +328,14 @@ export function createFilterListToolsMiddleware(
 
   return (handler) => {
     return async (request, context) => {
-      logger.debug(`Filter middleware called for namespace: ${context.namespaceUuid}`);
+      logger.debug(
+        `Filter middleware called for namespace: ${context.namespaceUuid}`,
+      );
       // Call the original handler to get the tools
       const response = await handler(request, context);
-      logger.debug(`Original handler returned ${response.tools?.length || 0} tools`);
+      logger.debug(
+        `Original handler returned ${response.tools?.length || 0} tools`,
+      );
 
       // Filter the tools based on namespace tool mappings
       if (response.tools) {
@@ -314,18 +344,25 @@ export function createFilterListToolsMiddleware(
           context.namespaceUuid,
           useCache,
         );
-        
+
         // Detailed logging for tool filtering analysis
         logger.mcp.toolsFiltered(
-          response.tools.length, 
-          filteredTools.length, 
+          response.tools.length,
+          filteredTools.length,
           context.namespaceUuid,
           {
-            original_tools: response.tools.map(t => ({ name: t.name, server: t.name.split('__')[0] })),
-            filtered_tools: filteredTools.map(t => ({ name: t.name, server: t.name.split('__')[0] })),
-            removed_tools: response.tools.filter(t => !filteredTools.some(ft => ft.name === t.name))
-              .map(t => ({ name: t.name, server: t.name.split('__')[0] }))
-          }
+            original_tools: response.tools.map((t) => ({
+              name: t.name,
+              server: t.name.split("__")[0],
+            })),
+            filtered_tools: filteredTools.map((t) => ({
+              name: t.name,
+              server: t.name.split("__")[0],
+            })),
+            removed_tools: response.tools
+              .filter((t) => !filteredTools.some((ft) => ft.name === t.name))
+              .map((t) => ({ name: t.name, server: t.name.split("__")[0] })),
+          },
         );
 
         return {

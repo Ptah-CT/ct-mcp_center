@@ -1,7 +1,12 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/trpc.ts", "src/router.ts", "src/routers/frontend/*.ts"],
+  entry: [
+    "src/index.ts",
+    "src/trpc.ts",
+    "src/router.ts",
+    "src/routers/frontend/*.ts",
+  ],
   format: ["esm"],
   target: "node18",
   outDir: "dist",

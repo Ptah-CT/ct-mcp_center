@@ -13,6 +13,7 @@ export const ServerParametersSchema = z.object({
   command: z.string().nullable().optional(),
   args: z.array(z.string()).nullable().optional(),
   env: z.record(z.string()).nullable().optional(),
+  cwd: z.string().nullable().optional(),
   stderr: IOTypeSchema.optional().default(IOTypeSchema.Enum.ignore),
   url: z.string().nullable().optional(),
   created_at: z.string(),

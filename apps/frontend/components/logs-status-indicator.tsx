@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { useLogsStore } from "@/lib/stores/logs-store";
 

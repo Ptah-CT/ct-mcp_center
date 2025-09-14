@@ -38,7 +38,11 @@ const trpcRouter = express.Router();
 trpcRouter.use(helmet());
 trpcRouter.use(
   cors({
-    origin: ["http://192.168.2.222:23456", "http://localhost:23456", "http://127.0.0.1:23456"],
+    origin: [
+      "http://192.168.2.222:23456",
+      "http://localhost:23456",
+      "http://127.0.0.1:23456",
+    ],
     credentials: true,
   }),
 );

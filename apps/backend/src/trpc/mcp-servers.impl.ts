@@ -7,6 +7,7 @@ import {
   GetMcpServerResponseSchema,
   ListMcpServersResponseSchema,
   McpServerTypeEnum,
+  ResetMcpServerErrorStatusResponseSchema,
   UpdateMcpServerRequestSchema,
   UpdateMcpServerResponseSchema,
 } from "@repo/zod-types";
@@ -439,6 +440,80 @@ export const mcpServersImplementations = {
       };
     } catch (error) {
       console.error("Error updating MCP server:", error);
+      return {
+        success: false as const,
+        message:
+          error instanceof Error ? error.message : "Internal server error",
+      };
+    }
+  },
+
+  resetErrorStatus: async (
+    input: { uuid: string },
+    userId: string,
+  ): Promise<z.infer<typeof ResetMcpServerErrorStatusResponseSchema>> => {
+    try {
+      // Check if server exists and user has permission to reset its error status
+      const server = await mcpServersRepository.findByUuid(input.uuid);
+
+      if (!server) {
+        return {
+          success: false as const,
+          message: "MCP server not found",
+        };
+      }
+
+      // Only server owner can reset error status of their own servers, only admin can reset public servers
+      if (server.user_id && server.user_id !== userId) {
+        return {
+          success: false as const,
+          message:
+            "Access denied: You can only reset error status of servers you own",
+        };
+      }
+
+      // Check if server actually has an error status
+      if (server.error_status !== "ERROR") {
+        return {
+          success: false as const,
+          message: "Server does not have an error status to reset",
+        };
+      }
+
+      // Reset the error status using the error tracker
+      try {
+        await serverErrorTracker.resetServerErrorState(server.uuid);
+        console.log(
+          `Reset error status for server: ${server.name} (${server.uuid})`,
+        );
+      } catch (error) {
+        console.error(
+          `Error resetting error status for server ${server.name} (${server.uuid}):`,
+          error,
+        );
+        return {
+          success: false as const,
+          message: "Failed to reset server error status",
+        };
+      }
+
+      // Fetch the updated server
+      const updatedServer = await mcpServersRepository.findByUuid(input.uuid);
+
+      if (!updatedServer) {
+        return {
+          success: false as const,
+          message: "Server not found after reset",
+        };
+      }
+
+      return {
+        success: true as const,
+        data: McpServersSerializer.serializeMcpServer(updatedServer),
+        message: "Server error status reset successfully",
+      };
+    } catch (error) {
+      console.error("Error resetting server error status:", error);
       return {
         success: false as const,
         message:

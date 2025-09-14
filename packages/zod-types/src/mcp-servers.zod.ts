@@ -19,6 +19,7 @@ export const createServerFormSchema = z
     description: z.string().optional(),
     type: McpServerTypeEnum,
     command: z.string().optional(),
+    cwd: z.string().optional(),
     args: z.string().optional(),
     url: z.string().optional(),
     bearerToken: z.string().optional(),
@@ -80,6 +81,7 @@ export const EditServerFormSchema = z
     description: z.string().optional(),
     type: McpServerTypeEnum,
     command: z.string().optional(),
+    cwd: z.string().optional(),
     args: z.string().optional(),
     url: z.string().optional(),
     bearerToken: z.string().optional(),
@@ -143,6 +145,7 @@ export const CreateMcpServerRequestSchema = z
     description: z.string().optional(),
     type: McpServerTypeEnum,
     command: z.string().optional(),
+    cwd: z.string().optional(),
     args: z.array(z.string()).optional(),
     env: z.record(z.string()).optional(),
     url: z.string().optional(),
@@ -180,6 +183,7 @@ export const McpServerSchema = z.object({
   description: z.string().nullable(),
   type: McpServerTypeEnum,
   command: z.string().nullable(),
+  cwd: z.string().nullable(),
   args: z.array(z.string()),
   env: z.record(z.string()),
   url: z.string().nullable(),
@@ -211,6 +215,7 @@ export const GetMcpServerResponseSchema = z.object({
 export const BulkImportMcpServerSchema = z
   .object({
     command: z.string().optional(),
+    cwd: z.string().optional(),
     args: z.array(z.string()).optional(),
     env: z.record(z.string()).optional(),
     url: z.string().optional(),
@@ -322,6 +327,7 @@ export const UpdateMcpServerRequestSchema = z
     description: z.string().optional(),
     type: McpServerTypeEnum,
     command: z.string().optional(),
+    cwd: z.string().optional(),
     args: z.array(z.string()).optional(),
     env: z.record(z.string()).optional(),
     url: z.string().optional(),
@@ -375,6 +381,24 @@ export type UpdateMcpServerRequest = z.infer<
 export type UpdateMcpServerResponse = z.infer<
   typeof UpdateMcpServerResponseSchema
 >;
+// Reset error status schemas
+export const ResetMcpServerErrorStatusRequestSchema = z.object({
+  uuid: z.string().uuid(),
+});
+
+export const ResetMcpServerErrorStatusResponseSchema = z.object({
+  success: z.boolean(),
+  data: McpServerSchema.optional(),
+  message: z.string().optional(),
+});
+
+export type ResetMcpServerErrorStatusRequest = z.infer<
+  typeof ResetMcpServerErrorStatusRequestSchema
+>;
+
+export type ResetMcpServerErrorStatusResponse = z.infer<
+  typeof ResetMcpServerErrorStatusResponseSchema
+>;
 
 // Repository-specific schemas
 export const McpServerCreateInputSchema = z.object({
@@ -391,6 +415,7 @@ export const McpServerCreateInputSchema = z.object({
   description: z.string().nullable().optional(),
   type: McpServerTypeEnum,
   command: z.string().nullable().optional(),
+  cwd: z.string().nullable().optional(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string()).optional(),
   url: z.string().nullable().optional(),
@@ -414,6 +439,7 @@ export const McpServerUpdateInputSchema = z.object({
   description: z.string().nullable().optional(),
   type: McpServerTypeEnum.optional(),
   command: z.string().nullable().optional(),
+  cwd: z.string().nullable().optional(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string()).optional(),
   url: z.string().nullable().optional(),
@@ -431,6 +457,7 @@ export const DatabaseMcpServerSchema = z.object({
   description: z.string().nullable(),
   type: McpServerTypeEnum,
   command: z.string().nullable(),
+  cwd: z.string().nullable(),
   args: z.array(z.string()),
   env: z.record(z.string()),
   url: z.string().nullable(),

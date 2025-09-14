@@ -65,7 +65,7 @@ export class ApiKeyConnectionPool {
     serverUuid: string,
     params: ServerParameters,
     keyUuid: string,
-    userId?: string
+    userId?: string,
   ): Promise<ConnectedClient> {
     // Update server params cache
     this.serverParamsCache.set(serverUuid, params);
@@ -76,7 +76,9 @@ export class ApiKeyConnectionPool {
       // Check global connection limit before creating new API key entry
       const totalConnections = this.getTotalConnectionCount();
       if (totalConnections >= this.maxGlobalConnections) {
-        throw new Error(`Global connection limit reached (${this.maxGlobalConnections})`);
+        throw new Error(
+          `Global connection limit reached (${this.maxGlobalConnections})`,
+        );
       }
 
       apiKeyConnection = {
@@ -99,13 +101,17 @@ export class ApiKeyConnectionPool {
     if (existingConnection) {
       // Update last access time
       apiKeyConnection.lastAccess = new Date();
-      console.log(`Reusing existing connection for API key ${keyUuid}, server ${serverUuid}`);
+      console.log(
+        `Reusing existing connection for API key ${keyUuid}, server ${serverUuid}`,
+      );
       return existingConnection;
     }
 
     // Check per-API-key connection limit
     if (apiKeyConnection.connections.size >= this.maxConnectionsPerApiKey) {
-      throw new Error(`Per-API-key connection limit reached (${this.maxConnectionsPerApiKey})`);
+      throw new Error(
+        `Per-API-key connection limit reached (${this.maxConnectionsPerApiKey})`,
+      );
     }
 
     // Create new connection
@@ -120,7 +126,7 @@ export class ApiKeyConnectionPool {
     apiKeyConnection.metadata.serverCount = apiKeyConnection.connections.size;
 
     console.log(
-      `Created new connection for API key ${keyUuid}, server ${serverUuid} (${params.name})`
+      `Created new connection for API key ${keyUuid}, server ${serverUuid} (${params.name})`,
     );
 
     return newClient;
@@ -132,17 +138,17 @@ export class ApiKeyConnectionPool {
   private async createNewConnection(
     params: ServerParameters,
     apiKey: string,
-    keyUuid: string
+    keyUuid: string,
   ): Promise<ConnectedClient | undefined> {
     console.log(
-      `Creating new connection for server ${params.name} (${params.uuid}) with API key ${keyUuid}`
+      `Creating new connection for server ${params.name} (${params.uuid}) with API key ${keyUuid}`,
     );
 
     const connectedClient = await connectMetaMcpClient(
       params,
       (exitCode, signal) => {
         console.log(
-          `Crash handler callback called for server ${params.name} (${params.uuid}) with API key ${keyUuid}`
+          `Crash handler callback called for server ${params.name} (${params.uuid}) with API key ${keyUuid}`,
         );
 
         // Handle process crash
@@ -151,14 +157,14 @@ export class ApiKeyConnectionPool {
           apiKey,
           keyUuid,
           exitCode,
-          signal
+          signal,
         ).catch((error) => {
           console.error(
             `Error handling server crash for ${params.uuid} with API key ${keyUuid}:`,
-            error
+            error,
           );
         });
-      }
+      },
     );
 
     if (!connectedClient) {
@@ -178,20 +184,22 @@ export class ApiKeyConnectionPool {
     }
 
     console.log(
-      `Cleaning up ${apiKeyConnection.connections.size} connections for API key ${apiKeyConnection.metadata.keyUuid}`
+      `Cleaning up ${apiKeyConnection.connections.size} connections for API key ${apiKeyConnection.metadata.keyUuid}`,
     );
 
     // Cleanup all connections for this API key
     await Promise.allSettled(
       Array.from(apiKeyConnection.connections.values()).map(async (client) => {
         await client.cleanup();
-      })
+      }),
     );
 
     // Remove from active connections
     this.activeConnections.delete(apiKey);
 
-    console.log(`Cleaned up API key connection ${apiKeyConnection.metadata.keyUuid}`);
+    console.log(
+      `Cleaned up API key connection ${apiKeyConnection.metadata.keyUuid}`,
+    );
   }
 
   /**
@@ -203,12 +211,13 @@ export class ApiKeyConnectionPool {
 
     // Find API keys that have exceeded the idle time
     this.activeConnections.forEach((apiKeyConnection, apiKey) => {
-      const timeSinceLastAccess = now.getTime() - apiKeyConnection.lastAccess.getTime();
-      
+      const timeSinceLastAccess =
+        now.getTime() - apiKeyConnection.lastAccess.getTime();
+
       if (timeSinceLastAccess > this.maxIdleTime) {
         keysToCleanup.push(apiKey);
         console.log(
-          `API key ${apiKeyConnection.metadata.keyUuid} idle for ${Math.floor(timeSinceLastAccess / 1000 / 60)} minutes, scheduling for cleanup`
+          `API key ${apiKeyConnection.metadata.keyUuid} idle for ${Math.floor(timeSinceLastAccess / 1000 / 60)} minutes, scheduling for cleanup`,
         );
       }
     });
@@ -223,7 +232,9 @@ export class ApiKeyConnectionPool {
     }
 
     if (keysToCleanup.length > 0) {
-      console.log(`Time-based cleanup completed: removed ${keysToCleanup.length} idle API key connections`);
+      console.log(
+        `Time-based cleanup completed: removed ${keysToCleanup.length} idle API key connections`,
+      );
     }
   }
 
@@ -237,7 +248,8 @@ export class ApiKeyConnectionPool {
     let totalServers = 0;
 
     this.activeConnections.forEach((apiKeyConnection, apiKey) => {
-      connectionsPerApiKey[apiKeyConnection.metadata.keyUuid] = apiKeyConnection.connections.size;
+      connectionsPerApiKey[apiKeyConnection.metadata.keyUuid] =
+        apiKeyConnection.connections.size;
       totalServers += apiKeyConnection.connections.size;
 
       // Track oldest and newest connections
@@ -287,7 +299,7 @@ export class ApiKeyConnectionPool {
     }, this.cleanupIntervalTime);
 
     console.log(
-      `Started API key connection pool cleanup timer (${this.cleanupIntervalTime / 1000 / 60} minute intervals)`
+      `Started API key connection pool cleanup timer (${this.cleanupIntervalTime / 1000 / 60} minute intervals)`,
     );
   }
 
@@ -310,10 +322,10 @@ export class ApiKeyConnectionPool {
     apiKey: string,
     keyUuid: string,
     exitCode: number | null,
-    signal: string | null
+    signal: string | null,
   ): Promise<void> {
     console.warn(
-      `Handling server crash for ${serverUuid} with API key ${keyUuid}`
+      `Handling server crash for ${serverUuid} with API key ${keyUuid}`,
     );
 
     // Record the crash in the error tracker
@@ -326,7 +338,10 @@ export class ApiKeyConnectionPool {
   /**
    * Clean up a specific server connection for an API key
    */
-  private async cleanupServerConnection(serverUuid: string, apiKey: string): Promise<void> {
+  private async cleanupServerConnection(
+    serverUuid: string,
+    apiKey: string,
+  ): Promise<void> {
     const apiKeyConnection = this.activeConnections.get(apiKey);
     if (!apiKeyConnection) {
       return;
@@ -336,11 +351,13 @@ export class ApiKeyConnectionPool {
     if (connection) {
       try {
         await connection.cleanup();
-        console.log(`Cleaned up crashed server connection ${serverUuid} for API key ${apiKeyConnection.metadata.keyUuid}`);
+        console.log(
+          `Cleaned up crashed server connection ${serverUuid} for API key ${apiKeyConnection.metadata.keyUuid}`,
+        );
       } catch (error) {
         console.error(
           `Error cleaning up crashed server connection ${serverUuid}:`,
-          error
+          error,
         );
       }
 
@@ -351,7 +368,9 @@ export class ApiKeyConnectionPool {
       // If no connections left for this API key, remove it entirely
       if (apiKeyConnection.connections.size === 0) {
         this.activeConnections.delete(apiKey);
-        console.log(`Removed empty API key connection ${apiKeyConnection.metadata.keyUuid}`);
+        console.log(
+          `Removed empty API key connection ${apiKeyConnection.metadata.keyUuid}`,
+        );
       }
     }
   }
@@ -367,9 +386,9 @@ export class ApiKeyConnectionPool {
 
     // Cleanup all API key connections
     const cleanupPromises = Array.from(this.activeConnections.keys()).map(
-      (apiKey) => this.cleanupApiKey(apiKey)
+      (apiKey) => this.cleanupApiKey(apiKey),
     );
-    
+
     await Promise.allSettled(cleanupPromises);
 
     // Clear caches
@@ -417,7 +436,7 @@ export class ApiKeyConnectionPool {
    */
   async invalidateServerConnections(
     serverUuid: string,
-    params: ServerParameters
+    params: ServerParameters,
   ): Promise<void> {
     console.log(`Invalidating connections for server ${serverUuid}`);
 
@@ -435,29 +454,34 @@ export class ApiKeyConnectionPool {
             try {
               await connection.cleanup();
               apiKeyConnection.connections.delete(serverUuid);
-              apiKeyConnection.metadata.serverCount = apiKeyConnection.connections.size;
+              apiKeyConnection.metadata.serverCount =
+                apiKeyConnection.connections.size;
               console.log(
-                `Invalidated connection to server ${serverUuid} for API key ${apiKeyConnection.metadata.keyUuid}`
+                `Invalidated connection to server ${serverUuid} for API key ${apiKeyConnection.metadata.keyUuid}`,
               );
 
               // If no connections left for this API key, remove it entirely
               if (apiKeyConnection.connections.size === 0) {
                 this.activeConnections.delete(apiKey);
-                console.log(`Removed empty API key connection ${apiKeyConnection.metadata.keyUuid}`);
+                console.log(
+                  `Removed empty API key connection ${apiKeyConnection.metadata.keyUuid}`,
+                );
               }
             } catch (error) {
               console.error(
                 `Error invalidating connection to server ${serverUuid} for API key ${apiKeyConnection.metadata.keyUuid}:`,
-                error
+                error,
               );
             }
-          })()
+          })(),
         );
       }
     });
 
     await Promise.allSettled(cleanupPromises);
-    console.log(`Completed invalidation of connections for server ${serverUuid}`);
+    console.log(
+      `Completed invalidation of connections for server ${serverUuid}`,
+    );
   }
 
   /**
