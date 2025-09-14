@@ -208,12 +208,14 @@ serverRouter.get("/stdio", async (req, res) => {
     });
 
     // Create SSE server transport
-    const sseTransport = new SSEServerTransport("/stdio", transport);
-    
+    const sseTransport = new SSEServerTransport("/stdio", res);
+
     console.log(`Attempting to handle SSE connection for: ${command} ${parsedArgs.join(" ")}`);
-    
-    // Handle the SSE connection with enhanced error logging
-    await sseTransport.handleSSEConnection(req, res);
+
+    // Connect the transport to the STDIO transport
+    sseTransport.connect(transport);
+
+    console.log("SSE transport connected to STDIO transport");
     
   } catch (error) {
     console.error("Error in STDIO SSE endpoint:", error);
