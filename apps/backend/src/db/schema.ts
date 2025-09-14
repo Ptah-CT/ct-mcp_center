@@ -63,7 +63,7 @@ export const mcpServersTable = pgTable(
     }),
   },
   (table) => [
-    index("mcp_servers_type_idx").on(table.type),
+
     index("mcp_servers_user_id_idx").on(table.user_id),
     index("mcp_servers_error_status_idx").on(table.error_status),
     // Allow same name for different users, but unique within user scope (including public)
@@ -153,48 +153,61 @@ export const usersTable = pgTable("users", {
     .defaultNow(),
 });
 
-export const sessionsTable = pgTable("sessions", {
-  id: text("id").primaryKey(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  userId: text("user_id")
-    .notNull()
-    .references(() => usersTable.id, { onDelete: "cascade" }),
-});
+export const sessionsTable = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("sessions_user_id_idx").on(table.userId),
+    index("sessions_token_idx").on(table.token),
+  ],
+);
 
-export const accountsTable = pgTable("accounts", {
-  id: text("id").primaryKey(),
-  accountId: text("account_id").notNull(),
-  providerId: text("provider_id").notNull(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => usersTable.id, { onDelete: "cascade" }),
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  idToken: text("id_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at", {
-    withTimezone: true,
-  }),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
-    withTimezone: true,
-  }),
-  scope: text("scope"),
-  password: text("password"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const accountsTable = pgTable(
+  "accounts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", {
+      withTimezone: true,
+    }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+      withTimezone: true,
+    }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("accounts_user_id_idx").on(table.userId),
+  ],
+);
 
 export const verificationsTable = pgTable("verifications", {
   id: text("id").primaryKey(),
@@ -262,7 +275,7 @@ export const endpointsTable = pgTable(
     }),
   },
   (table) => [
-    index("endpoints_namespace_uuid_idx").on(table.namespace_uuid),
+    index("endpoints_name_idx").on(table.name),
     index("endpoints_user_id_idx").on(table.user_id),
     // Endpoints must be globally unique because they're used in URLs like /metamcp/[name]/sse
     unique("endpoints_name_unique").on(table.name),
@@ -334,7 +347,13 @@ export const namespaceToolMappingsTable = pgTable(
     index("namespace_tool_mappings_mcp_server_uuid_idx").on(
       table.mcp_server_uuid,
     ),
-    index("namespace_tool_mappings_status_idx").on(table.status),
+    // Composite index for frequent lookup query
+    index("namespace_tool_mappings_lookup_idx").on(
+      table.namespace_uuid,
+      table.mcp_server_uuid,
+      table.tool_uuid,
+    ),
+
     unique("namespace_tool_mappings_unique_idx").on(
       table.namespace_uuid,
       table.tool_uuid,
@@ -359,8 +378,8 @@ export const apiKeysTable = pgTable(
   },
   (table) => [
     index("api_keys_user_id_idx").on(table.user_id),
-    index("api_keys_key_idx").on(table.key),
-    index("api_keys_is_active_idx").on(table.is_active),
+
+
     unique("api_keys_name_per_user_idx").on(table.user_id, table.name),
   ],
 );
@@ -435,8 +454,8 @@ export const oauthAuthorizationCodesTable = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("oauth_authorization_codes_client_id_idx").on(table.client_id),
-    index("oauth_authorization_codes_user_id_idx").on(table.user_id),
+
+
     index("oauth_authorization_codes_expires_at_idx").on(table.expires_at),
   ],
 );
@@ -459,8 +478,8 @@ export const oauthAccessTokensTable = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("oauth_access_tokens_client_id_idx").on(table.client_id),
-    index("oauth_access_tokens_user_id_idx").on(table.user_id),
+
+
     index("oauth_access_tokens_expires_at_idx").on(table.expires_at),
   ],
 );
@@ -486,7 +505,7 @@ export const toolCacheMetadataTable = pgTable(
   },
   (table) => [
     index("tool_cache_metadata_tool_uuid_idx").on(table.tool_uuid),
-    index("tool_cache_metadata_last_cached_idx").on(table.last_cached_at),
+
   ],
 );
 
@@ -514,13 +533,10 @@ export const performanceMetricsTable = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("performance_metrics_type_recorded_idx").on(
-      table.metric_type,
-      table.recorded_at,
-    ),
+
     index("performance_metrics_server_uuid_idx").on(table.server_uuid),
-    index("performance_metrics_namespace_uuid_idx").on(table.namespace_uuid),
-    index("performance_metrics_tool_name_idx").on(table.tool_name),
-    index("performance_metrics_recorded_at_idx").on(table.recorded_at),
+
+
+
   ],
 );
