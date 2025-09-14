@@ -54,6 +54,7 @@ export default function McpServersPage() {
       description: "",
       type: McpServerTypeEnum.Enum.STDIO,
       command: "",
+      cwd: "",
       args: "",
       env: "",
       url: "",
@@ -113,6 +114,7 @@ export default function McpServersPage() {
       description: data.description,
       type: data.type,
       command: data.command,
+      cwd: data.cwd,
       args: argsArray,
       env: envObject,
       url: data.url,
@@ -328,6 +330,23 @@ export default function McpServersPage() {
                               <Input
                                 {...field}
                                 placeholder={t("mcp-servers:argsPlaceholder")}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="cwd"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("mcp-servers:cwd")}</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder={t("mcp-servers:cwdPlaceholder")}
                               />
                             </FormControl>
                             <FormMessage />

@@ -13,6 +13,8 @@
   "commandPlaceholder": "uvx",
   "args": "Arguments",
   "argsPlaceholder": "mcp-server-time --local-timezone=America/New_York",
+  "cwd": "Working Directory",
+  "cwdPlaceholder": "/path/to/working/directory",
   "env": "Environment Variables",
   "envPlaceholder": "KEY=value (one per line)",
   "url": "URL",

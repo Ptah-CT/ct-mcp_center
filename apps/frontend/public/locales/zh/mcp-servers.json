@@ -13,6 +13,8 @@
   "commandPlaceholder": "uvx",
   "args": "参数",
   "argsPlaceholder": "mcp-server-time --local-timezone=Asia/Shanghai",
+  "cwd": "工作目录",
+  "cwdPlaceholder": "/path/to/working/directory",
   "env": "环境变量",
   "envPlaceholder": "KEY=value（每行一个）",
   "url": "URL",
