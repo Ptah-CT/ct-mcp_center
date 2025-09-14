@@ -83,6 +83,7 @@ export async function convertDbServerToParams(
       command: server.command,
       args: server.args || [],
       env: server.env || {},
+      cwd: server.cwd,
       url: server.url,
       created_at: server.created_at?.toISOString() || new Date().toISOString(),
       status: "active", // Default status for non-namespace servers

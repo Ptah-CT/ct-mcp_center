@@ -1,4 +1,8 @@
-import { McpServerErrorStatusEnum, McpServerStatusEnum, McpServerTypeEnum } from "@repo/zod-types";
+import {
+  McpServerErrorStatusEnum,
+  McpServerStatusEnum,
+  McpServerTypeEnum,
+} from "@repo/zod-types";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -37,6 +41,7 @@ export const mcpServersTable = pgTable(
       .notNull()
       .default(McpServerTypeEnum.Enum.STDIO),
     command: text("command"),
+    cwd: text("cwd"),
     args: text("args")
       .array()
       .notNull()
@@ -493,12 +498,15 @@ export const performanceMetricsTable = pgTable(
     metric_type: text("metric_type").notNull(),
     metric_value: numeric("metric_value").notNull(),
     metric_unit: text("metric_unit").notNull().default("ms"),
-    server_uuid: uuid("server_uuid").references(() => mcpServersTable.uuid, { 
-      onDelete: "cascade" 
+    server_uuid: uuid("server_uuid").references(() => mcpServersTable.uuid, {
+      onDelete: "cascade",
     }),
-    namespace_uuid: uuid("namespace_uuid").references(() => namespacesTable.uuid, {
-      onDelete: "cascade"
-    }),
+    namespace_uuid: uuid("namespace_uuid").references(
+      () => namespacesTable.uuid,
+      {
+        onDelete: "cascade",
+      },
+    ),
     tool_name: text("tool_name"),
     additional_data: jsonb("additional_data").$type<Record<string, any>>(),
     recorded_at: timestamp("recorded_at", { withTimezone: true })
@@ -506,7 +514,10 @@ export const performanceMetricsTable = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("performance_metrics_type_recorded_idx").on(table.metric_type, table.recorded_at),
+    index("performance_metrics_type_recorded_idx").on(
+      table.metric_type,
+      table.recorded_at,
+    ),
     index("performance_metrics_server_uuid_idx").on(table.server_uuid),
     index("performance_metrics_namespace_uuid_idx").on(table.namespace_uuid),
     index("performance_metrics_tool_name_idx").on(table.tool_name),

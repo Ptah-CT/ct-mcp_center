@@ -1,7 +1,7 @@
 import { ServerParameters } from "@repo/zod-types";
 
 import { mcpServersRepository, namespacesRepository } from "../db/repositories";
-import { metaMcpServerPool, mcpServerPool } from "./metamcp";
+import { mcpServerPool, metaMcpServerPool } from "./metamcp";
 import { convertDbServerToParams } from "./metamcp/utils";
 
 /**

@@ -1,6 +1,9 @@
 /**
  * Script to reset all MCP server error states to NONE
  */
+import { drizzle } from "drizzle-orm/postgres-js";
+import { eq } from "drizzle-orm";
+import postgres from "postgres";
 import { mcpServersTable } from "./apps/backend/src/db/schema.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;

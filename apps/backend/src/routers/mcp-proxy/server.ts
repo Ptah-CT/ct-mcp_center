@@ -1,27 +1,9 @@
-import { randomUUID } from "node:crypto";
-
-import {
-  SSEClientTransport,
-  SseError,
-} from "@modelcontextprotocol/sdk/client/sse.js";
 import { getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { McpServerErrorStatusEnum, McpServerTypeEnum } from "@repo/zod-types";
 import express from "express";
-import { parse as shellParseArgs } from "shell-quote";
-import { findActualExecutable } from "spawn-rx";
 
 import { mcpServersRepository } from "../../db/repositories";
-import { McpCacheMiddleware } from "../../lib/caching/mcp-cache-middleware";
-import { toolResponseCache } from "../../lib/caching/tool-response-cache";
-import mcpProxy from "../../lib/mcp-proxy";
-import { transformDockerUrl } from "../../lib/metamcp/client";
-import { mcpServerPool } from "../../lib/metamcp/mcp-server-pool";
-import { resolveEnvVariables } from "../../lib/metamcp/utils";
-import { ProcessManagedStdioTransport } from "../../lib/stdio-transport/process-managed-transport";
 import { betterAuthMcpMiddleware } from "../../middleware/better-auth-mcp.middleware";
 
 const serverRouter = express.Router();

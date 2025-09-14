@@ -92,7 +92,7 @@ export const DEFAULT_INHERITED_ENV_VARS =
       [
         // Basic system variables
         "HOME",
-        "LOGNAME", 
+        "LOGNAME",
         "PATH",
         "SHELL",
         "TERM",
@@ -108,7 +108,7 @@ export const DEFAULT_INHERITED_ENV_VARS =
         "UV_CONFIG_FILE",
         "PIP_CONFIG_FILE",
         "PIP_CACHE_DIR",
-        // Node.js environment variables  
+        // Node.js environment variables
         "NODE_PATH",
         "NPM_CONFIG_PREFIX",
         "PNPM_HOME",
@@ -121,7 +121,7 @@ export const DEFAULT_INHERITED_ENV_VARS =
         "LC_CTYPE",
         "TMPDIR",
         "XDG_CACHE_HOME",
-        "XDG_CONFIG_HOME", 
+        "XDG_CONFIG_HOME",
         "XDG_DATA_HOME",
         "XDG_RUNTIME_DIR",
         // Additional development variables
@@ -231,7 +231,7 @@ export class ProcessManagedStdioTransport implements Transport {
           env: Object.keys({
             ...getDefaultEnvironment(),
             ...this._serverParams.env,
-          }).join(', ')
+          }).join(", "),
         });
 
         reject(error);

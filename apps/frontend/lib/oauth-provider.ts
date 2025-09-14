@@ -21,7 +21,7 @@ class DbOAuthClientProvider implements OAuthClientProvider {
     this.mcpServerUuid = mcpServerUuid;
     this.serverUrl = serverUrl;
     // Save the server URL to session storage for consistency (only in browser)
-    if (typeof window !== 'undefined' && window.sessionStorage) {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       sessionStorage.setItem(SESSION_KEYS.SERVER_URL, serverUrl);
     }
   }
@@ -77,7 +77,8 @@ class DbOAuthClientProvider implements OAuthClientProvider {
           SESSION_KEYS.CLIENT_INFORMATION,
           this.serverUrl,
         );
-        const storedInfo = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null;
+        const storedInfo =
+          typeof window !== "undefined" ? sessionStorage.getItem(key) : null;
         if (storedInfo) {
           return await OAuthClientInformationSchema.parseAsync(
             JSON.parse(storedInfo),
@@ -98,7 +99,7 @@ class DbOAuthClientProvider implements OAuthClientProvider {
       SESSION_KEYS.CLIENT_INFORMATION,
       this.serverUrl,
     );
-    if (typeof window !== 'undefined' && window.sessionStorage) {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       sessionStorage.setItem(key, JSON.stringify(clientInformation));
     }
 
@@ -131,7 +132,8 @@ class DbOAuthClientProvider implements OAuthClientProvider {
       } else {
         // Get from session storage during OAuth flow
         const key = getServerSpecificKey(SESSION_KEYS.TOKENS, this.serverUrl);
-        const storedTokens = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null;
+        const storedTokens =
+          typeof window !== "undefined" ? sessionStorage.getItem(key) : null;
         if (storedTokens) {
           return await OAuthTokensSchema.parseAsync(JSON.parse(storedTokens));
         }
@@ -147,7 +149,7 @@ class DbOAuthClientProvider implements OAuthClientProvider {
   async saveTokens(tokens: OAuthTokens) {
     // Save to session storage during OAuth flow
     const key = getServerSpecificKey(SESSION_KEYS.TOKENS, this.serverUrl);
-    if (typeof window !== 'undefined' && window.sessionStorage) {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       sessionStorage.setItem(key, JSON.stringify(tokens));
     }
 
@@ -174,7 +176,7 @@ class DbOAuthClientProvider implements OAuthClientProvider {
       SESSION_KEYS.CODE_VERIFIER,
       this.serverUrl,
     );
-    if (typeof window !== 'undefined' && window.sessionStorage) {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       sessionStorage.setItem(key, codeVerifier);
     }
 
@@ -214,7 +216,8 @@ class DbOAuthClientProvider implements OAuthClientProvider {
       SESSION_KEYS.CODE_VERIFIER,
       this.serverUrl,
     );
-    const codeVerifier = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null;
+    const codeVerifier =
+      typeof window !== "undefined" ? sessionStorage.getItem(key) : null;
     if (!codeVerifier) {
       throw new Error("No code verifier saved for session");
     }
@@ -223,7 +226,7 @@ class DbOAuthClientProvider implements OAuthClientProvider {
   }
 
   clear() {
-    if (typeof window !== 'undefined' && window.sessionStorage) {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       sessionStorage.removeItem(
         getServerSpecificKey(SESSION_KEYS.CLIENT_INFORMATION, this.serverUrl),
       );
@@ -248,7 +251,7 @@ export class DebugDbOAuthClientProvider extends DbOAuthClientProvider {
       SESSION_KEYS.SERVER_METADATA,
       this.serverUrl,
     );
-    if (typeof window !== 'undefined' && window.sessionStorage) {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       sessionStorage.setItem(key, JSON.stringify(metadata));
     }
   }
@@ -258,7 +261,8 @@ export class DebugDbOAuthClientProvider extends DbOAuthClientProvider {
       SESSION_KEYS.SERVER_METADATA,
       this.serverUrl,
     );
-    const metadata = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null;
+    const metadata =
+      typeof window !== "undefined" ? sessionStorage.getItem(key) : null;
     if (!metadata) {
       return null;
     }
@@ -267,7 +271,7 @@ export class DebugDbOAuthClientProvider extends DbOAuthClientProvider {
 
   clear() {
     super.clear();
-    if (typeof window !== 'undefined' && window.sessionStorage) {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       sessionStorage.removeItem(
         getServerSpecificKey(SESSION_KEYS.SERVER_METADATA, this.serverUrl),
       );

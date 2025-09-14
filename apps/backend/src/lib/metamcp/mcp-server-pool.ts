@@ -31,7 +31,7 @@ export class McpServerPool {
 
   // Default number of idle sessions per server UUID
   private readonly defaultIdleCount: number;
-  
+
   // Optimized warming configuration
   private readonly warmingBatchSize: number;
   private readonly warmingDelayMs: number;
@@ -41,7 +41,7 @@ export class McpServerPool {
     defaultIdleCount: number = 1,
     warmingBatchSize: number = 5,
     warmingDelayMs: number = 100,
-    maxConcurrentConnections: number = 10
+    maxConcurrentConnections: number = 10,
   ) {
     this.defaultIdleCount = defaultIdleCount;
     this.warmingBatchSize = warmingBatchSize;
@@ -56,14 +56,14 @@ export class McpServerPool {
     defaultIdleCount: number = 1,
     warmingBatchSize: number = 5,
     warmingDelayMs: number = 100,
-    maxConcurrentConnections: number = 10
+    maxConcurrentConnections: number = 10,
   ): McpServerPool {
     if (!McpServerPool.instance) {
       McpServerPool.instance = new McpServerPool(
         defaultIdleCount,
         warmingBatchSize,
         warmingDelayMs,
-        maxConcurrentConnections
+        maxConcurrentConnections,
       );
     }
     return McpServerPool.instance;
@@ -260,7 +260,7 @@ export class McpServerPool {
     namespaceUuid?: string,
   ): Promise<void> {
     const serverEntries = Object.entries(serverParams).filter(
-      ([uuid, _]) => !this.idleSessions[uuid]
+      ([uuid, _]) => !this.idleSessions[uuid],
     );
 
     if (serverEntries.length === 0) {
@@ -268,35 +268,37 @@ export class McpServerPool {
     }
 
     console.log(
-      `Warming ${serverEntries.length} MCP server sessions with optimized batching (batch=${this.warmingBatchSize}, delay=${this.warmingDelayMs}ms)`
+      `Warming ${serverEntries.length} MCP server sessions with optimized batching (batch=${this.warmingBatchSize}, delay=${this.warmingDelayMs}ms)`,
     );
 
     // Process servers in optimized batches to prevent resource exhaustion
     for (let i = 0; i < serverEntries.length; i += this.warmingBatchSize) {
       const batch = serverEntries.slice(i, i + this.warmingBatchSize);
-      
+
       const batchPromises = batch.map(async ([uuid, params]) => {
         try {
           await this.createIdleSession(uuid, params, namespaceUuid);
         } catch (error) {
           console.error(
             `Failed to create idle session for server ${uuid} (${params.name}):`,
-            error
+            error,
           );
         }
       });
 
       // Wait for current batch to complete
       await Promise.allSettled(batchPromises);
-      
+
       // Add delay between batches to prevent overwhelming the system
       if (i + this.warmingBatchSize < serverEntries.length) {
-        await new Promise(resolve => setTimeout(resolve, this.warmingDelayMs));
+        await new Promise((resolve) =>
+          setTimeout(resolve, this.warmingDelayMs),
+        );
       }
     }
 
     console.log(
-      `MCP server pool warming completed: ${Object.keys(this.idleSessions).length} idle sessions ready`
+      `MCP server pool warming completed: ${Object.keys(this.idleSessions).length} idle sessions ready`,
     );
   }
 
@@ -609,8 +611,8 @@ export class McpServerPool {
 
 // Create a singleton instance with optimized warming parameters
 export const mcpServerPool = McpServerPool.getInstance(
-  parseInt(process.env.MCP_POOL_IDLE_COUNT || '1'),
-  parseInt(process.env.MCP_POOL_WARMING_BATCH_SIZE || '5'),
-  parseInt(process.env.MCP_POOL_WARMING_DELAY_MS || '100'),
-  parseInt(process.env.MCP_POOL_MAX_CONCURRENT || '10')
+  parseInt(process.env.MCP_POOL_IDLE_COUNT || "1"),
+  parseInt(process.env.MCP_POOL_WARMING_BATCH_SIZE || "5"),
+  parseInt(process.env.MCP_POOL_WARMING_DELAY_MS || "100"),
+  parseInt(process.env.MCP_POOL_MAX_CONCURRENT || "10"),
 );

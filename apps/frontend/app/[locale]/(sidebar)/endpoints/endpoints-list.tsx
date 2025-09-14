@@ -180,18 +180,21 @@ export function EndpointsList({ onRefresh }: EndpointsListProps) {
                   onClick={async () => {
                     const url = `${getAppUrl()}/metamcp/${endpoint.name}/mcp`;
                     try {
-                      if (navigator.clipboard && navigator.clipboard.writeText) {
+                      if (
+                        navigator.clipboard &&
+                        navigator.clipboard.writeText
+                      ) {
                         await navigator.clipboard.writeText(url);
                         toast.success(t("endpoints:list.shttpUrlCopied"));
                       } else {
                         // Fallback for insecure contexts or older browsers
-                        const textArea = document.createElement('textarea');
+                        const textArea = document.createElement("textarea");
                         textArea.value = url;
                         document.body.appendChild(textArea);
                         textArea.focus();
                         textArea.select();
                         try {
-                          document.execCommand('copy');
+                          document.execCommand("copy");
                           toast.success(t("endpoints:list.shttpUrlCopied"));
                         } catch (fallbackError) {
                           toast.error(`Copy failed. URL: ${url}`);

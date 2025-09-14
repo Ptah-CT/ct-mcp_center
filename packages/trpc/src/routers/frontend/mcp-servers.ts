@@ -6,6 +6,8 @@ import {
   DeleteMcpServerResponseSchema,
   GetMcpServerResponseSchema,
   ListMcpServersResponseSchema,
+  ResetMcpServerErrorStatusRequestSchema,
+  ResetMcpServerErrorStatusResponseSchema,
   UpdateMcpServerRequestSchema,
   UpdateMcpServerResponseSchema,
 } from "@repo/zod-types";
@@ -45,6 +47,12 @@ export const createMcpServersRouter = (
       input: z.infer<typeof UpdateMcpServerRequestSchema>,
       userId: string,
     ) => Promise<z.infer<typeof UpdateMcpServerResponseSchema>>;
+    resetErrorStatus: (
+      input: {
+        uuid: string;
+      },
+      userId: string,
+    ) => Promise<z.infer<typeof ResetMcpServerErrorStatusResponseSchema>>;
   },
 ) => {
   return router({
@@ -93,6 +101,14 @@ export const createMcpServersRouter = (
       .output(UpdateMcpServerResponseSchema)
       .mutation(async ({ input, ctx }) => {
         return await implementations.update(input, ctx.user.id);
+      }),
+
+    // Protected: Reset error status of MCP server
+    resetErrorStatus: protectedProcedure
+      .input(ResetMcpServerErrorStatusRequestSchema)
+      .output(ResetMcpServerErrorStatusResponseSchema)
+      .mutation(async ({ input, ctx }) => {
+        return await implementations.resetErrorStatus(input, ctx.user.id);
       }),
   });
 };

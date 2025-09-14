@@ -52,7 +52,9 @@ export const createMetaMcpClient = (
       env: resolvedEnv,
       stderr: "pipe",
     };
-    console.log(`[CLIENT-DEBUG] Creating STDIO transport for ${serverParams.name}: command="${serverParams.command}", args=${JSON.stringify(serverParams.args)}`);
+    console.log(
+      `[CLIENT-DEBUG] Creating STDIO transport for ${serverParams.name}: command="${serverParams.command}", args=${JSON.stringify(serverParams.args)}`,
+    );
     transport = new ProcessManagedStdioTransport(stdioParams);
 
     // Handle stderr stream when set to "pipe"
@@ -183,13 +185,19 @@ export const connectMetaMcpClient = async (
       }
 
       // Create fresh client and transport for each attempt
-      console.log(`[CONNECT-DEBUG] Creating client and transport for server ${serverParams.name} (${serverParams.uuid})`);
+      console.log(
+        `[CONNECT-DEBUG] Creating client and transport for server ${serverParams.name} (${serverParams.uuid})`,
+      );
       const { client, transport } = createMetaMcpClient(serverParams);
       if (!client || !transport) {
-        console.error(`[CONNECT-DEBUG] Failed to create client/transport for server ${serverParams.name} (${serverParams.uuid}): client=${!!client}, transport=${!!transport}`);
+        console.error(
+          `[CONNECT-DEBUG] Failed to create client/transport for server ${serverParams.name} (${serverParams.uuid}): client=${!!client}, transport=${!!transport}`,
+        );
         return undefined;
       }
-      console.log(`[CONNECT-DEBUG] Successfully created client and transport for server ${serverParams.name} (${serverParams.uuid})`);
+      console.log(
+        `[CONNECT-DEBUG] Successfully created client and transport for server ${serverParams.name} (${serverParams.uuid})`,
+      );
 
       // Set up process crash detection for STDIO transports BEFORE connecting
       if (transport instanceof ProcessManagedStdioTransport) {
@@ -215,39 +223,51 @@ export const connectMetaMcpClient = async (
         };
       }
 
-      console.log(`[CONNECT-DEBUG] Attempting to connect client to transport for server ${serverParams.name} (${serverParams.uuid})`);
-      
+      console.log(
+        `[CONNECT-DEBUG] Attempting to connect client to transport for server ${serverParams.name} (${serverParams.uuid})`,
+      );
+
       // Add timeout for client connection
       // Use AbortController for more reliable timeout
       const connectTimeout = 30000; // Allow 30 seconds for package installation
       const abortController = new AbortController();
-      
+
       const timeoutId = setTimeout(() => {
-        console.log(`[CONNECT-DEBUG] Connection timeout after ${connectTimeout}ms for server ${serverParams.name}, aborting...`);
+        console.log(
+          `[CONNECT-DEBUG] Connection timeout after ${connectTimeout}ms for server ${serverParams.name}, aborting...`,
+        );
         abortController.abort();
       }, connectTimeout);
-      
+
       try {
         // Attempt connection with timeout handling
         const connectPromise = client.connect(transport);
         const timeoutPromise = new Promise<never>((_, reject) => {
-          abortController.signal.addEventListener('abort', () => {
-            reject(new Error(`Connection timeout after ${connectTimeout}ms for server ${serverParams.name}`));
+          abortController.signal.addEventListener("abort", () => {
+            reject(
+              new Error(
+                `Connection timeout after ${connectTimeout}ms for server ${serverParams.name}`,
+              ),
+            );
           });
         });
-        
+
         await Promise.race([connectPromise, timeoutPromise]);
         clearTimeout(timeoutId);
       } catch (error) {
         clearTimeout(timeoutId);
-        if (error instanceof Error && error.message.includes('timeout')) {
-          console.log(`[CONNECT-DEBUG] MCP connection timed out, skipping server ${serverParams.name}`);
+        if (error instanceof Error && error.message.includes("timeout")) {
+          console.log(
+            `[CONNECT-DEBUG] MCP connection timed out, skipping server ${serverParams.name}`,
+          );
           await transport.close();
           return null; // Return null instead of throwing to skip this server
         }
         throw error;
       }
-      console.log(`[CONNECT-DEBUG] Successfully connected client for server ${serverParams.name} (${serverParams.uuid})`);
+      console.log(
+        `[CONNECT-DEBUG] Successfully connected client for server ${serverParams.name} (${serverParams.uuid})`,
+      );
 
       return {
         client,
