@@ -1,7 +1,7 @@
 import { ServerParameters } from "@repo/zod-types";
 
 import { mcpServersRepository, namespacesRepository } from "../db/repositories";
-import { metaMcpServerPool } from "./metamcp";
+import { metaMcpServerPool, mcpServerPool } from "./metamcp";
 import { convertDbServerToParams } from "./metamcp/utils";
 
 /**
@@ -45,7 +45,6 @@ export async function initializeIdleServers() {
 
     // Initialize idle sessions for the underlying MCP server pool with ALL servers
     if (Object.keys(allServerParams).length > 0) {
-      const { mcpServerPool } = await import("./metamcp");
       await mcpServerPool.ensureIdleSessions(allServerParams);
       console.log(
         "✅ Successfully initialized idle MCP server pool sessions for ALL servers",

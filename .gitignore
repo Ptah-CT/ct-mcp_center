@@ -39,3 +39,24 @@ yarn-error.log*
 
 .cursor/
 .vscode/
+
+# Development and Agent files
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+QWEN.md
+*.md.backup
+
+# Development tools and configs
+.codacy/
+.github/instructions/
+.serena/
+
+# Log files
+backend-log.txt
+*.log
+
+# Temporary frontend files
+apps/frontend/app/global-error.js
+apps/frontend/app/global-error.tsx
+apps/frontend/app/not-found.tsx

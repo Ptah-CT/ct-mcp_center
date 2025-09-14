@@ -153,6 +153,7 @@ export function EditMcpServer({
       description: "",
       type: McpServerTypeEnum.Enum.STDIO,
       command: "",
+      cwd: "",
       args: "",
       url: "",
       bearerToken: "",
@@ -173,8 +174,9 @@ export function EditMcpServer({
           value.type === McpServerTypeEnum.Enum.SSE ||
           value.type === McpServerTypeEnum.Enum.STREAMABLE_HTTP
         ) {
-          // Clear command, args, and env when switching to sse or streamable_http
+          // Clear command, args, cwd, and env when switching to sse or streamable_http
           editForm.setValue("command", "");
+          editForm.setValue("cwd", "");
           editForm.setValue("args", "");
           editForm.setValue("env", "");
         }
@@ -191,6 +193,7 @@ export function EditMcpServer({
         description: server.description || "",
         type: server.type,
         command: server.command || "",
+        cwd: server.cwd || "",
         args: server.args.join(" "),
         url: server.url || "",
         bearerToken: server.bearerToken || "",
@@ -239,6 +242,7 @@ export function EditMcpServer({
         description: data.description,
         type: data.type,
         command: data.command,
+        cwd: data.cwd,
         args: argsArray,
         env: envObject,
         url: data.url,
@@ -419,6 +423,17 @@ export function EditMcpServer({
                 <p className="text-xs text-muted-foreground">
                   Separate arguments with spaces
                 </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label htmlFor="edit-cwd" className="text-sm font-medium">
+                  {t("mcp-servers:cwd")}
+                </label>
+                <Input
+                  id="edit-cwd"
+                  {...editForm.register("cwd")}
+                  placeholder={t("mcp-servers:cwdPlaceholder")}
+                />
               </div>
 
               <div className="flex flex-col gap-2">

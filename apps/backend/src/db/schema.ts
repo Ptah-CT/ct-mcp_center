@@ -3,7 +3,9 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -455,5 +457,59 @@ export const oauthAccessTokensTable = pgTable(
     index("oauth_access_tokens_client_id_idx").on(table.client_id),
     index("oauth_access_tokens_user_id_idx").on(table.user_id),
     index("oauth_access_tokens_expires_at_idx").on(table.expires_at),
+  ],
+);
+
+// Tool Cache Metadata table for cache configuration
+export const toolCacheMetadataTable = pgTable(
+  "tool_cache_metadata",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tool_uuid: uuid("tool_uuid")
+      .notNull()
+      .references(() => toolsTable.uuid, { onDelete: "cascade" }),
+    cache_ttl: integer("cache_ttl").notNull().default(300),
+    cache_strategy: text("cache_strategy").notNull().default("memory"),
+    last_cached_at: timestamp("last_cached_at", { withTimezone: true }),
+    cache_hit_count: integer("cache_hit_count").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("tool_cache_metadata_tool_uuid_idx").on(table.tool_uuid),
+    index("tool_cache_metadata_last_cached_idx").on(table.last_cached_at),
+  ],
+);
+
+// Performance Metrics table for system monitoring
+export const performanceMetricsTable = pgTable(
+  "performance_metrics",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    metric_type: text("metric_type").notNull(),
+    metric_value: numeric("metric_value").notNull(),
+    metric_unit: text("metric_unit").notNull().default("ms"),
+    server_uuid: uuid("server_uuid").references(() => mcpServersTable.uuid, { 
+      onDelete: "cascade" 
+    }),
+    namespace_uuid: uuid("namespace_uuid").references(() => namespacesTable.uuid, {
+      onDelete: "cascade"
+    }),
+    tool_name: text("tool_name"),
+    additional_data: jsonb("additional_data").$type<Record<string, any>>(),
+    recorded_at: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("performance_metrics_type_recorded_idx").on(table.metric_type, table.recorded_at),
+    index("performance_metrics_server_uuid_idx").on(table.server_uuid),
+    index("performance_metrics_namespace_uuid_idx").on(table.namespace_uuid),
+    index("performance_metrics_tool_name_idx").on(table.tool_name),
+    index("performance_metrics_recorded_at_idx").on(table.recorded_at),
   ],
 );

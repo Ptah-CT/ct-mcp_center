@@ -19,7 +19,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isSignupDisabled, setIsSignupDisabled] = useState(false);
+  const [isSignupDisabled, setIsSignupDisabled] = useState(true);
   const [isOidcLoading, setIsOidcLoading] = useState(false);
   const [isOidcEnabled, setIsOidcEnabled] = useState(false);
   const [authProvidersLoading, setAuthProvidersLoading] = useState(true);

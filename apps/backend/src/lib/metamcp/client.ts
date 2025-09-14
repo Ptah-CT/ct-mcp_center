@@ -219,7 +219,7 @@ export const connectMetaMcpClient = async (
       
       // Add timeout for client connection
       // Use AbortController for more reliable timeout
-      const connectTimeout = 5000; // Reduce to 5 seconds for faster detection
+      const connectTimeout = 30000; // Allow 30 seconds for package installation
       const abortController = new AbortController();
       
       const timeoutId = setTimeout(() => {
@@ -241,7 +241,7 @@ export const connectMetaMcpClient = async (
       } catch (error) {
         clearTimeout(timeoutId);
         if (error instanceof Error && error.message.includes('timeout')) {
-          console.log(`[CONNECT-DEBUG] Serena connection timed out, skipping server ${serverParams.name}`);
+          console.log(`[CONNECT-DEBUG] MCP connection timed out, skipping server ${serverParams.name}`);
           await transport.close();
           return null; // Return null instead of throwing to skip this server
         }
