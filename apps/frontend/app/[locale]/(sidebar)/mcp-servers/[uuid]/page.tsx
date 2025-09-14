@@ -52,6 +52,7 @@ export default function McpServerDetailPage({
     useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false);
+  const [showResetErrorStatusDialog, setShowResetErrorStatusDialog] = useState<boolean>(false);
 
   // Function to toggle env var visibility
   const toggleEnvVarVisibility = (key: string) => {
@@ -111,6 +112,32 @@ export default function McpServerDetailPage({
     },
   });
 
+  // tRPC mutation for resetting error status
+  const resetErrorStatusMutation = trpc.frontend.mcpServers.resetErrorStatus.useMutation({
+    onSuccess: (result) => {
+      if (result.success) {
+        // Invalidate cache to get fresh data
+        utils.frontend.mcpServers.get.invalidate({ uuid });
+        utils.frontend.mcpServers.list.invalidate();
+        toast.success(t("mcp-servers:detail.resetErrorStatusSuccess"));
+        setShowResetErrorStatusDialog(false);
+      } else {
+        console.error("Reset error status failed:", result.message);
+        toast.error(t("mcp-servers:detail.resetErrorStatusError"), {
+          description: result.message || t("mcp-servers:detail.resetErrorStatusError"),
+        });
+        setShowResetErrorStatusDialog(false);
+      }
+    },
+    onError: (error) => {
+      console.error("Error resetting server error status:", error);
+      toast.error(t("mcp-servers:detail.resetErrorStatusError"), {
+        description: error.message,
+      });
+      setShowResetErrorStatusDialog(false);
+    },
+  });
+
   const server: McpServer | undefined = serverResponse?.success
     ? serverResponse.data
     : undefined;
@@ -153,6 +180,11 @@ export default function McpServerDetailPage({
   // Handle delete server
   const handleDeleteServer = async () => {
     deleteMutation.mutate({ uuid });
+  };
+
+  // Handle reset error status
+  const handleResetErrorStatus = async () => {
+    resetErrorStatusMutation.mutate({ uuid });
   };
 
   // Handle successful edit
@@ -322,6 +354,16 @@ export default function McpServerDetailPage({
             <Edit className="h-4 w-4 mr-2" />
             {t("mcp-servers:detail.editServer")}
           </Button>
+          {server?.error_status === McpServerErrorStatusEnum.Enum.ERROR && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowResetErrorStatusDialog(true)}
+              className="text-yellow-600 dark:text-yellow-400 border-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+            >
+              {t("mcp-servers:detail.resetErrorStatus")}
+            </Button>
+          )}
           <Button
             variant="destructive"
             size="sm"
@@ -369,6 +411,38 @@ export default function McpServerDetailPage({
               {deleteMutation.isPending
                 ? t("mcp-servers:detail.deleting")
                 : t("mcp-servers:detail.deleteServer")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Error Status Confirmation Dialog */}
+      <Dialog open={showResetErrorStatusDialog} onOpenChange={setShowResetErrorStatusDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t("mcp-servers:detail.resetErrorStatusTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("mcp-servers:detail.resetErrorStatusDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowResetErrorStatusDialog(false)}
+              disabled={resetErrorStatusMutation.isPending}
+            >
+              {t("common:cancel")}
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleResetErrorStatus}
+              disabled={resetErrorStatusMutation.isPending}
+            >
+              {resetErrorStatusMutation.isPending
+                ? t("mcp-servers:detail.resettingErrorStatus")
+                : t("mcp-servers:detail.resetErrorStatus")}
             </Button>
           </DialogFooter>
         </DialogContent>

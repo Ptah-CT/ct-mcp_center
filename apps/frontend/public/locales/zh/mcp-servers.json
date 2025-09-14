@@ -170,7 +170,16 @@
     "connect": "连接",
     "connectToManageTools": "连接到 MCP 服务器以管理工具",
     "connectingToServer": "正在连接到 MCP 服务器...",
-    "toolsManagement": "工具管理"
+    "toolsManagement": "工具管理",
+    "serverErrorTitle": "服务器错误",
+    "serverErrorDescription": "此 MCP 服务器当前处于错误状态，无法连接。",
+    "fixServerErrorToManageTools": "修复服务器错误以管理工具",
+    "resetErrorStatus": "重置错误状态",
+    "resetErrorStatusTitle": "重置错误状态", 
+    "resetErrorStatusDescription": "您确定要重置此服务器的错误状态吗？这将清除错误状态并允许再次尝试连接。",
+    "resetErrorStatusSuccess": "服务器错误状态重置成功",
+    "resetErrorStatusError": "重置服务器错误状态失败",
+    "resettingErrorStatus": "正在重置..."
   },
   "tools": {
     "overview": "工具概览",

@@ -172,7 +172,13 @@
     "toolsManagement": "Tools Management",
     "serverErrorTitle": "Server Error",
     "serverErrorDescription": "This MCP server is currently in an error state and cannot be connected to.",
-    "fixServerErrorToManageTools": "Fix the server error to manage tools"
+    "fixServerErrorToManageTools": "Fix the server error to manage tools",
+    "resetErrorStatus": "Reset Error Status",
+    "resetErrorStatusTitle": "Reset Error Status",
+    "resetErrorStatusDescription": "Are you sure you want to reset the error status of this server? This will clear the error state and allow connection attempts again.",
+    "resetErrorStatusSuccess": "Server error status reset successfully",
+    "resetErrorStatusError": "Failed to reset server error status",
+    "resettingErrorStatus": "Resetting..."
   },
   "tools": {
     "overview": "Tools Overview",
