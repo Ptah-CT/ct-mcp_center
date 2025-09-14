@@ -8,10 +8,11 @@ export class McpServersSerializer {
       description: dbServer.description,
       type: dbServer.type,
       command: dbServer.command,
+      cwd: dbServer.cwd,
       args: dbServer.args,
       env: dbServer.env,
       url: dbServer.url,
-      error_status: dbServer.error_status,
+      error_status: dbServer.error_status || "NONE", // Defensive fallback for missing error_status
       created_at: dbServer.created_at.toISOString(),
       bearerToken: dbServer.bearerToken,
       user_id: dbServer.user_id,
