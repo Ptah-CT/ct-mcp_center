@@ -9,8 +9,8 @@ import { ProcessManagedStdioTransport } from "../../lib/stdio-transport/process-
 
 const serverRouter = express.Router();
 
-// Apply better auth middleware to all server routes
-serverRouter.use(betterAuthMcpMiddleware);
+// Apply better auth middleware to all server routes - DISABLED for development
+// serverRouter.use(betterAuthMcpMiddleware);
 
 // Map to store transports by sessionId
 const webAppTransports: Map<string, Transport> = new Map<string, Transport>();
