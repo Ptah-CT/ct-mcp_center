@@ -646,16 +646,12 @@ export function useConnection({
           });
         } catch (error) {
           // Enhanced error logging for better debugging
-          console.error('MCP connection failed:', {
-            serverUrl: mcpProxyServerUrl?.toString() || 'unknown',
-            transportType: isMetaMCP ? 'MetaMCP' : transportType,
-            errorType: error?.constructor?.name || 'unknown',
-            statusCode: error instanceof SseError ? error.code : 'unknown',
-            message: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-            retryCount
-          });
-          console.error('Raw error object:', error);
+          console.error('MCP connection failed - URL:', mcpProxyServerUrl?.toString() || 'unknown');
+          console.error('MCP connection failed - Transport:', isMetaMCP ? 'MetaMCP' : transportType);
+          console.error('MCP connection failed - Error type:', error?.constructor?.name || 'unknown');
+          console.error('MCP connection failed - Status:', error instanceof SseError ? error.code : 'unknown');
+          console.error('MCP connection failed - Message:', error instanceof Error ? error.message : String(error));
+          console.dir(error, { depth: null });
 
           // Check if it's a proxy auth error
           if (isProxyAuthError(error)) {

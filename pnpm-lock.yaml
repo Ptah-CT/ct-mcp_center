@@ -35,6 +35,9 @@ importers:
       '@trpc/server':
         specifier: ^11.4.1
         version: 11.4.1(typescript@5.8.2)
+      '@upstash/redis':
+        specifier: ^1.35.3
+        version: 1.35.3
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -52,7 +55,7 @@ importers:
         version: 16.5.0
       drizzle-orm:
         specifier: ^0.44.2
-        version: 0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(kysely@0.28.2)(pg@8.16.0)
+        version: 0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(@upstash/redis@1.35.3)(kysely@0.28.2)(pg@8.16.0)
       execa:
         specifier: ^9.6.0
         version: 9.6.0
@@ -62,6 +65,9 @@ importers:
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
+      ioredis:
+        specifier: ^5.4.1
+        version: 5.7.0
       logfire:
         specifier: ^0.9.0
         version: 0.9.0(@opentelemetry/api@1.9.0)(@opentelemetry/auto-instrumentations-node@0.57.1(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0)))(@opentelemetry/context-async-hooks@2.1.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0))(@opentelemetry/exporter-metrics-otlp-proto@0.200.0(@opentelemetry/api@1.9.0))(@opentelemetry/exporter-trace-otlp-proto@0.200.0(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.202.0(@opentelemetry/api@1.9.0))(@opentelemetry/resources@2.1.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.1.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-node@0.200.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.1.0(@opentelemetry/api@1.9.0))
@@ -96,6 +102,9 @@ importers:
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.23
+      '@types/ioredis':
+        specifier: ^5.0.0
+        version: 5.0.0
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.1
@@ -917,6 +926,9 @@ packages:
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [x64]
     os: [win32]
+
+  '@ioredis/commands@1.3.1':
+    resolution: {integrity: sha512-bYtU8avhGIcje3IhvF9aSjsa5URMZBHnwKtOvXsT4sfYy9gppW11gLPT/9oNqlJZD47yPKveQFTAFWpHjKvUoQ==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -2329,6 +2341,10 @@ packages:
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
+  '@types/ioredis@5.0.0':
+    resolution: {integrity: sha512-zJbJ3FVE17CNl5KXzdeSPtdltc4tMT3TzC6fxQS0sQngkbFZ6h+0uTafsRqu+eSLIugf6Yb0Ea0SUuRr42Nk9g==}
+    deprecated: This is a stub types definition. ioredis provides its own type definitions, so you do not need this installed.
+
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
@@ -2447,6 +2463,9 @@ packages:
   '@typescript-eslint/visitor-keys@8.33.0':
     resolution: {integrity: sha512-7RW7CMYoskiz5OOGAWjJFxgb7c5UNjTG292gYhWeOAcFmYCtVCSqjqSBj5zMhxbXo2JOW95YYrUWJfU0zrpaGQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@upstash/redis@1.35.3':
+    resolution: {integrity: sha512-hSjv66NOuahW3MisRGlSgoszU2uONAY2l5Qo3Sae8OT3/Tng9K+2/cBRuyPBX8egwEGcNNCF9+r0V6grNnhL+w==}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -2651,6 +2670,10 @@ packages:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
 
+  cluster-key-slot@1.1.2:
+    resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
+    engines: {node: '>=0.10.0'}
+
   color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
     engines: {node: '>=7.0.0'}
@@ -2749,6 +2772,10 @@ packages:
 
   defu@6.1.4:
     resolution: {integrity: sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg==}
+
+  denque@2.1.0:
+    resolution: {integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==}
+    engines: {node: '>=0.10'}
 
   depd@2.0.0:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
@@ -3357,6 +3384,10 @@ packages:
   intersection-observer@0.12.2:
     resolution: {integrity: sha512-7m1vEcPCxXYI8HqnL8CKI6siDyD+eIWSwgB3DZA+ZTogxk9I4CDnj4wilt9x/+/QbHI4YG5YZNmC6458/e9Ktg==}
 
+  ioredis@5.7.0:
+    resolution: {integrity: sha512-NUcA93i1lukyXU+riqEyPtSEkyFq8tX90uL659J+qpCZ3rEdViB/APC58oAhIh3+bJln2hzdlZbBZsGNrlsR8g==}
+    engines: {node: '>=12.22.0'}
+
   ipaddr.js@1.9.1:
     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
     engines: {node: '>= 0.10'}
@@ -3642,6 +3673,12 @@ packages:
 
   lodash.camelcase@4.3.0:
     resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
+
+  lodash.defaults@4.2.0:
+    resolution: {integrity: sha512-qjxPLHd3r5DnsdGacqOMU6pb/avJzdh9tFX2ymgoZE27BmjXrNy/y4LoaiTeAb+O3gL8AfpJGtqfX/ae2leYYQ==}
+
+  lodash.isarguments@3.1.0:
+    resolution: {integrity: sha512-chi4NHZlZqZD18a0imDHnZPrDeBbTtVN7GXMwuGdRH9qotxAjYs3aVLKc7zNOG9eddR5Ksd8rvFEBc9SsggPpg==}
 
   lodash.merge@4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
@@ -4140,6 +4177,14 @@ packages:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
 
+  redis-errors@1.2.0:
+    resolution: {integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==}
+    engines: {node: '>=4'}
+
+  redis-parser@3.0.0:
+    resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
+    engines: {node: '>=4'}
+
   reflect.getprototypeof@1.0.10:
     resolution: {integrity: sha512-00o4I+DVrefhv+nX0ulyi3biSHCPDe+yLv5o/p6d/UVlirijB8E16FtfwSAi4g3tcqrQ4lRAqQSoFEZJehYEcw==}
     engines: {node: '>= 0.4'}
@@ -4340,6 +4385,9 @@ packages:
   split2@4.2.0:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
     engines: {node: '>= 10.x'}
+
+  standard-as-callback@2.1.0:
+    resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
 
   statuses@2.0.1:
     resolution: {integrity: sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ==}
@@ -5099,6 +5147,8 @@ snapshots:
 
   '@img/sharp-win32-x64@0.34.3':
     optional: true
+
+  '@ioredis/commands@1.3.1': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -6677,6 +6727,12 @@ snapshots:
 
   '@types/http-errors@2.0.5': {}
 
+  '@types/ioredis@5.0.0':
+    dependencies:
+      ioredis: 5.7.0
+    transitivePeerDependencies:
+      - supports-color
+
   '@types/json-schema@7.0.15': {}
 
   '@types/memcached@2.2.10':
@@ -6841,6 +6897,10 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.33.0
       eslint-visitor-keys: 4.2.0
+
+  '@upstash/redis@1.35.3':
+    dependencies:
+      uncrypto: 0.1.3
 
   accepts@2.0.0:
     dependencies:
@@ -7089,6 +7149,8 @@ snapshots:
 
   clsx@2.1.1: {}
 
+  cluster-key-slot@1.1.2: {}
+
   color-convert@2.0.1:
     dependencies:
       color-name: 1.1.4
@@ -7182,6 +7244,8 @@ snapshots:
 
   defu@6.1.4: {}
 
+  denque@2.1.0: {}
+
   depd@2.0.0: {}
 
   dequal@2.0.3: {}
@@ -7218,10 +7282,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(kysely@0.28.2)(pg@8.16.0):
+  drizzle-orm@0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(@upstash/redis@1.35.3)(kysely@0.28.2)(pg@8.16.0):
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/pg': 8.15.4
+      '@upstash/redis': 1.35.3
       kysely: 0.28.2
       pg: 8.16.0
 
@@ -7888,6 +7953,20 @@ snapshots:
 
   intersection-observer@0.12.2: {}
 
+  ioredis@5.7.0:
+    dependencies:
+      '@ioredis/commands': 1.3.1
+      cluster-key-slot: 1.1.2
+      debug: 4.4.1
+      denque: 2.1.0
+      lodash.defaults: 4.2.0
+      lodash.isarguments: 3.1.0
+      redis-errors: 1.2.0
+      redis-parser: 3.0.0
+      standard-as-callback: 2.1.0
+    transitivePeerDependencies:
+      - supports-color
+
   ipaddr.js@1.9.1: {}
 
   is-alphabetical@1.0.4: {}
@@ -8140,6 +8219,10 @@ snapshots:
       p-locate: 5.0.0
 
   lodash.camelcase@4.3.0: {}
+
+  lodash.defaults@4.2.0: {}
+
+  lodash.isarguments@3.1.0: {}
 
   lodash.merge@4.6.2: {}
 
@@ -8600,6 +8683,12 @@ snapshots:
 
   readdirp@4.1.2: {}
 
+  redis-errors@1.2.0: {}
+
+  redis-parser@3.0.0:
+    dependencies:
+      redis-errors: 1.2.0
+
   reflect.getprototypeof@1.0.10:
     dependencies:
       call-bind: 1.0.8
@@ -8891,6 +8980,8 @@ snapshots:
       - supports-color
 
   split2@4.2.0: {}
+
+  standard-as-callback@2.1.0: {}
 
   statuses@2.0.1: {}
 

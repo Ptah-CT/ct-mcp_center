@@ -27,9 +27,7 @@ mcpProxyRouter.use(
 
 // Apply additional headers
 mcpProxyRouter.use((req, res, next) => {
-  res.header("Access-Control-Expose-Headers", "mcp-session-id");
-  res.header("Access-Control-Expose-Headers", "authorization");
-  res.header("Access-Control-Expose-Headers", "last-event-id");
+  res.header("Access-Control-Expose-Headers", "mcp-session-id, authorization, last-event-id");
   next();
 });
 
