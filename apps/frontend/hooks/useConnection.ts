@@ -421,7 +421,9 @@ export function useConnection({
         // Handle MetaMCP connections
         if (isMetaMCP) {
           // For MetaMCP, we use SSE connection to the metamcp proxy endpoint
-          mcpProxyServerUrl = new URL(url, window.location.origin);
+          // Ensure absolute URL construction to avoid locale prefix issues
+          const metaMcpOrigin = window.location.origin;
+          mcpProxyServerUrl = new URL(`${metaMcpOrigin}${url}`);
           // Add includeInactiveServers as a query parameter
           if (includeInactiveServers) {
             mcpProxyServerUrl.searchParams.append(
@@ -449,10 +451,9 @@ export function useConnection({
         } else {
           switch (transportType) {
             case McpServerTypeEnum.Enum.STDIO:
-              mcpProxyServerUrl = new URL(
-                `/mcp-proxy/server/stdio`,
-                window.location.origin,
-              );
+              // Ensure absolute URL construction to avoid locale prefix issues
+              const origin = window.location.origin;
+              mcpProxyServerUrl = new URL(`${origin}/mcp-proxy/server/stdio`);
               mcpProxyServerUrl.searchParams.append("command", command);
               mcpProxyServerUrl.searchParams.append("args", args);
               mcpProxyServerUrl.searchParams.append("env", JSON.stringify(env));
@@ -484,7 +485,9 @@ export function useConnection({
               break;
 
             case McpServerTypeEnum.Enum.SSE:
-              mcpProxyServerUrl = new URL(`/mcp-proxy/server/sse`, window.location.origin);
+              // Ensure absolute URL construction to avoid locale prefix issues
+              const sseOrigin = window.location.origin;
+              mcpProxyServerUrl = new URL(`${sseOrigin}/mcp-proxy/server/sse`);
               mcpProxyServerUrl.searchParams.append("url", url);
               transportOptions = {
                 eventSourceInit: {
@@ -513,7 +516,9 @@ export function useConnection({
               break;
 
             case McpServerTypeEnum.Enum.STREAMABLE_HTTP:
-              mcpProxyServerUrl = new URL(`/mcp-proxy/server/mcp`, window.location.origin);
+              // Ensure absolute URL construction to avoid locale prefix issues
+              const mcpOrigin = window.location.origin;
+              mcpProxyServerUrl = new URL(`${mcpOrigin}/mcp-proxy/server/mcp`);
               mcpProxyServerUrl.searchParams.append("url", url);
               transportOptions = {
                 ...(authTokens && { authProvider: authProvider }),
