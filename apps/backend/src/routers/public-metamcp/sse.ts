@@ -50,7 +50,6 @@ const cleanupSession = async (sessionId: string) => {
 sseRouter.get(
   "/:endpoint_name/sse",
   lookupEndpoint,
-  authenticateApiKey,
   async (req, res) => {
     const authReq = req as ApiKeyAuthenticatedRequest;
     const { namespaceUuid, endpointName } = authReq;
@@ -102,7 +101,6 @@ sseRouter.get(
 sseRouter.post(
   "/:endpoint_name/message",
   lookupEndpoint,
-  authenticateApiKey,
   async (req, res) => {
     // const authReq = req as ApiKeyAuthenticatedRequest;
     // const { namespaceUuid, endpointName } = authReq;
@@ -127,5 +125,10 @@ sseRouter.post(
     }
   },
 );
+
+// Test route to verify router is working
+sseRouter.get("/test", (req, res) => {
+  res.json({ message: "SSE router is working" });
+});
 
 export default sseRouter;

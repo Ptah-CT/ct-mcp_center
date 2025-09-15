@@ -42,6 +42,20 @@ publicEndpointsRouter.use(sseRouter);
 publicEndpointsRouter.use(openApiRouter);
 
 // Health check endpoint
+// Test endpoint
+publicEndpointsRouter.get("/test", (req, res) => {
+  res.json({ message: "Public endpoints router is working" });
+});
+// Health check endpoint
+publicEndpointsRouter.post("/:endpoint_name/message", (req, res) => {
+  console.log(`Direct POST /message received for endpoint: ${req.params.endpoint_name}`);
+  console.log(`Query params:`, req.query);
+  res.json({ message: "POST message received", endpoint: req.params.endpoint_name, sessionId: req.query.sessionId });
+});
+
+// Health check endpoint
+
+// Health check endpoint
 publicEndpointsRouter.get("/health", (req, res) => {
   res.json({
     status: "ok",
