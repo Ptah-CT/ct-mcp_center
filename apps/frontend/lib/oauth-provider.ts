@@ -13,7 +13,7 @@ import { getAppUrl } from "./env";
 import { vanillaTrpcClient } from "./trpc";
 
 // OAuth client provider that works with a specific MCP server
-class DbOAuthClientProvider implements OAuthClientProvider {
+export class DbOAuthClientProvider implements OAuthClientProvider {
   private mcpServerUuid: string;
   protected serverUrl: string;
 
