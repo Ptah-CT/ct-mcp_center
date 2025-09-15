@@ -396,8 +396,9 @@ export function useConnection({
         const headers: HeadersInit = {};
 
         // Use manually provided bearer token if available, otherwise use OAuth tokens
-        const token =
-          bearerToken || (await authProvider.tokens())?.access_token;
+        const authTokens = await authProvider.tokens();
+        const token = bearerToken || authTokens?.access_token;
+        
         if (token) {
           const authHeaderName = headerName || "Authorization";
 
@@ -456,7 +457,7 @@ export function useConnection({
               mcpProxyServerUrl.searchParams.append("args", args);
               mcpProxyServerUrl.searchParams.append("env", JSON.stringify(env));
               transportOptions = {
-                authProvider: authProvider,
+                ...(authTokens && { authProvider: authProvider }),
                 eventSourceInit: {
                   fetch: (
                     url: string | URL | globalThis.Request,
@@ -515,7 +516,7 @@ export function useConnection({
               mcpProxyServerUrl = new URL(`/mcp-proxy/server/mcp`, getAppUrl());
               mcpProxyServerUrl.searchParams.append("url", url);
               transportOptions = {
-                authProvider: authProvider,
+                ...(authTokens && { authProvider: authProvider }),
                 eventSourceInit: {
                   fetch: (
                     url: string | URL | globalThis.Request,
