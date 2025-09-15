@@ -212,10 +212,53 @@ serverRouter.get("/stdio", async (req, res) => {
 
     console.log(`Attempting to handle SSE connection for: ${command} ${parsedArgs.join(" ")}`);
 
-    // Connect the transport to the STDIO transport
-    sseTransport.connect(transport);
+    // Start the STDIO transport to establish connection to the MCP server process
+    await transport.start();
 
-    console.log("SSE transport connected to STDIO transport");
+    // Create a simple proxy server that forwards messages between SSE and STDIO
+    const proxyServer = {
+      async connect(clientTransport: Transport) {
+        // Forward messages from client (SSE) to server (STDIO)
+        clientTransport.onmessage = async (message) => {
+          try {
+            await transport.send(message);
+          } catch (error) {
+            console.error("Error forwarding message to STDIO:", error);
+            clientTransport.onerror?.(error as Error);
+          }
+        };
+
+        // Forward messages from server (STDIO) to client (SSE)
+        transport.onmessage = async (message) => {
+          try {
+            await clientTransport.send(message);
+          } catch (error) {
+            console.error("Error forwarding message to SSE:", error);
+          }
+        };
+
+        // Handle errors and cleanup
+        transport.onerror = (error) => {
+          console.error("STDIO transport error:", error);
+          clientTransport.onerror?.(error);
+        };
+
+        transport.onclose = () => {
+          console.log("STDIO transport closed");
+          clientTransport.onclose?.();
+        };
+
+        clientTransport.onclose = () => {
+          console.log("SSE transport closed");
+          transport.close();
+        };
+      }
+    };
+
+    // Connect the SSE transport via the proxy server
+    await proxyServer.connect(sseTransport);
+
+    console.log("SSE transport connected to STDIO transport via proxy");
     
   } catch (error) {
     console.error("Error in STDIO SSE endpoint:", error);
