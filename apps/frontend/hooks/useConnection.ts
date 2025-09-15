@@ -652,8 +652,10 @@ export function useConnection({
             errorType: error?.constructor?.name || 'unknown',
             statusCode: error instanceof SseError ? error.code : 'unknown',
             message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
             retryCount
           });
+          console.error('Raw error object:', error);
 
           // Check if it's a proxy auth error
           if (isProxyAuthError(error)) {
@@ -717,6 +719,7 @@ export function useConnection({
           transportType: isMetaMCP ? 'MetaMCP' : transportType,
           retryCount
         });
+        console.error('Raw error object:', e);
         
         // Provide user-friendly error messages based on error type
         if (e instanceof TypeError && e.message.includes('URL')) {
