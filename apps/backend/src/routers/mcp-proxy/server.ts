@@ -5,6 +5,7 @@ import express from "express";
 
 import { mcpServersRepository } from "../../db/repositories";
 import { betterAuthMcpMiddleware } from "../../middleware/better-auth-mcp.middleware";
+import { ProcessManagedStdioTransport } from "../../lib/stdio-transport/process-managed-transport";
 
 const serverRouter = express.Router();
 
@@ -141,6 +142,92 @@ serverRouter.post("/message", async (req, res) => {
   } catch (error) {
     console.error("Error in /message route:", error);
     res.status(500).json(error);
+  }
+});
+
+// STDIO SSE endpoint
+serverRouter.get("/stdio", async (req, res) => {
+  try {
+    const { command, args, env } = req.query;
+    
+    if (!command || typeof command !== "string") {
+      return res.status(400).json({ error: "Command is required" });
+    }
+
+    // Parse args - expect JSON array or convert string to array
+    let parsedArgs: string[] = [];
+    if (args) {
+      try {
+        if (typeof args === "string") {
+          // Try parsing as JSON first, fall back to splitting by space
+          try {
+            parsedArgs = JSON.parse(args);
+          } catch {
+            parsedArgs = args.trim() ? args.split(" ") : [];
+          }
+        } else if (Array.isArray(args)) {
+          parsedArgs = args;
+        }
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid args format" });
+      }
+    }
+
+    // Parse env - expect JSON object
+    let parsedEnv: Record<string, string> = {};
+    if (env) {
+      try {
+        if (typeof env === "string") {
+          parsedEnv = JSON.parse(env);
+        } else if (typeof env === "object") {
+          parsedEnv = env as Record<string, string>;
+        }
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid env format" });
+      }
+    }
+
+    // Check cooldown
+    if (isStdioInCooldown(command, parsedArgs, parsedEnv)) {
+      return res.status(429).json({ 
+        error: "Command is in cooldown period due to recent failures" 
+      });
+    }
+
+    console.log(`Creating STDIO transport for: ${command} ${parsedArgs.join(" ")}`);
+
+    // Create STDIO transport
+    const transport = new ProcessManagedStdioTransport({
+      command,
+      args: parsedArgs,
+      env: { ...defaultEnvironment, ...parsedEnv },
+      onprocesscrash: (exitCode, signal) => {
+        console.log(`STDIO process crashed: exit=${exitCode}, signal=${signal}`);
+        setStdioCooldown(command, parsedArgs, parsedEnv);
+      },
+    });
+
+    // Create SSE server transport
+    const sseTransport = new SSEServerTransport("/stdio", res);
+
+    console.log(`Attempting to handle SSE connection for: ${command} ${parsedArgs.join(" ")}`);
+
+    // Connect the transport to the STDIO transport
+    sseTransport.connect(transport);
+
+    console.log("SSE transport connected to STDIO transport");
+    
+  } catch (error) {
+    console.error("Error in STDIO SSE endpoint:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    console.error("Error details:", { 
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      cause: error instanceof Error ? error.cause : undefined
+    });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error", details: error instanceof Error ? error.message : String(error) });
+    }
   }
 });
 

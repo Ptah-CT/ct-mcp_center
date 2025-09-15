@@ -48,6 +48,30 @@ import {
 } from "../lib/notificationTypes";
 import { createAuthProvider } from "../lib/oauth-provider";
 import { trpc } from "../lib/trpc";
+/**
+ * Validates and normalizes a server URL, providing fallback to app URL if invalid
+ */
+const validateServerUrl = (url: string | null): string => {
+  if (!url || url.trim() === '') {
+    console.warn('Empty server URL, using app URL as fallback');
+    return getAppUrl();
+  }
+  
+  try {
+    // Handle relative URLs by providing a base URL
+    if (url.startsWith('/')) {
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : getAppUrl();
+      new URL(url, baseUrl);
+      return new URL(url, baseUrl).href;
+    } else {
+      new URL(url);
+      return url;
+    }
+  } catch (error) {
+    console.error('Invalid server URL format:', url, error);
+    return getAppUrl();
+  }
+};
 
 interface UseConnectionOptions {
   mcpServerUuid: string;
@@ -263,13 +287,28 @@ export function useConnection({
       const proxyHealthResponse = await fetch(proxyHealthUrl, {
         credentials: "include", // Ensure cookies are sent
       });
+      
+      // Handle authentication errors - don't block connection
+      if (proxyHealthResponse.status === 401) {
+        console.warn("Proxy health check returned 401 - authentication may be required");
+        return; // Don't throw, let transport handle auth
+      }
+      
+      // Only try to parse JSON if content-type indicates JSON
+      const contentType = proxyHealthResponse.headers.get("content-type");
+      if (!contentType?.includes("application/json")) {
+        console.warn("Proxy health check returned non-JSON response");
+        return; // Don't throw, let transport handle
+      }
+      
       const proxyHealth = await proxyHealthResponse.json();
       if (proxyHealth?.status !== "ok") {
-        throw new Error("MCP Proxy Server is not healthy");
+        console.warn("Proxy health check returned non-ok status:", proxyHealth);
+        return; // Don't throw, let transport handle
       }
     } catch (e) {
-      console.error("Couldn't connect to MCP Proxy Server", e);
-      throw e;
+      console.warn("Proxy health check failed, proceeding with transport connection:", e);
+      // Don't throw - let the transport connection handle its own errors
     }
   });
 
@@ -297,13 +336,15 @@ export function useConnection({
 
   const handleAuthError = useMemoizedFn(async (error: unknown) => {
     if (is401Error(error)) {
+      const validatedUrl = validateServerUrl(url);
+      
       if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.setItem(SESSION_KEYS.SERVER_URL, url || "");
+        sessionStorage.setItem(SESSION_KEYS.SERVER_URL, validatedUrl);
         sessionStorage.setItem(SESSION_KEYS.MCP_SERVER_UUID, mcpServerUuid);
       }
 
       const result = await auth(authProvider, {
-        serverUrl: url || "",
+        serverUrl: validatedUrl,
       });
       return result === "AUTHORIZED";
     }
@@ -346,12 +387,8 @@ export function useConnection({
         },
       );
 
-      try {
-        await checkProxyHealth();
-      } catch {
-        setConnectionStatus("error-connecting-to-proxy");
-        return;
-      }
+      // Non-blocking health check - won't throw errors
+      await checkProxyHealth();
 
       try {
         // Inject auth manually instead of using SSEClientTransport, because we're
@@ -359,8 +396,9 @@ export function useConnection({
         const headers: HeadersInit = {};
 
         // Use manually provided bearer token if available, otherwise use OAuth tokens
-        const token =
-          bearerToken || (await authProvider.tokens())?.access_token;
+        const authTokens = await authProvider.tokens();
+        const token = bearerToken || authTokens?.access_token;
+        
         if (token) {
           const authHeaderName = headerName || "Authorization";
 
@@ -419,7 +457,7 @@ export function useConnection({
               mcpProxyServerUrl.searchParams.append("args", args);
               mcpProxyServerUrl.searchParams.append("env", JSON.stringify(env));
               transportOptions = {
-                authProvider: authProvider,
+                ...(authTokens && { authProvider: authProvider }),
                 eventSourceInit: {
                   fetch: (
                     url: string | URL | globalThis.Request,
@@ -478,7 +516,7 @@ export function useConnection({
               mcpProxyServerUrl = new URL(`/mcp-proxy/server/mcp`, getAppUrl());
               mcpProxyServerUrl.searchParams.append("url", url);
               transportOptions = {
-                authProvider: authProvider,
+                ...(authTokens && { authProvider: authProvider }),
                 eventSourceInit: {
                   fetch: (
                     url: string | URL | globalThis.Request,
@@ -542,15 +580,57 @@ export function useConnection({
 
         let capabilities;
         try {
-          const transport = isMetaMCP
-            ? new SSEClientTransport(mcpProxyServerUrl, transportOptions)
-            : transportType === McpServerTypeEnum.Enum.STREAMABLE_HTTP
-              ? new StreamableHTTPClientTransport(mcpProxyServerUrl, {
-                  sessionId: undefined,
-                  ...transportOptions,
-                })
-              : new SSEClientTransport(mcpProxyServerUrl, transportOptions);
+          // Defensive checks for transport creation
+          if (!mcpProxyServerUrl || !mcpProxyServerUrl.href) {
+            console.error('Invalid proxy server URL for transport creation:', {
+              url: mcpProxyServerUrl?.toString() || 'undefined',
+              isMetaMCP,
+              transportType
+            });
+            throw new Error('Invalid proxy server URL for transport creation');
+          }
 
+          // Validate URL format and accessibility
+          try {
+            // Additional URL validation - ensure it's a proper URL
+            const urlTest = new URL(mcpProxyServerUrl.href);
+            if (!urlTest.protocol || (!urlTest.protocol.startsWith('http') && !urlTest.protocol.startsWith('ws'))) {
+              throw new Error('Invalid protocol for transport URL');
+            }
+          } catch (urlError) {
+            console.error('Transport URL validation failed:', {
+              url: mcpProxyServerUrl.toString(),
+              error: urlError instanceof Error ? urlError.message : String(urlError)
+            });
+            throw new Error(`Invalid transport URL format: ${urlError instanceof Error ? urlError.message : String(urlError)}`);
+          }
+
+          console.debug('Creating transport:', {
+            url: mcpProxyServerUrl.toString(),
+            isMetaMCP,
+            transportType: isMetaMCP ? 'MetaMCP' : transportType
+          });
+
+          let transport;
+          try {
+            transport = isMetaMCP
+              ? new SSEClientTransport(mcpProxyServerUrl, transportOptions)
+              : transportType === McpServerTypeEnum.Enum.STREAMABLE_HTTP
+                ? new StreamableHTTPClientTransport(mcpProxyServerUrl, {
+                    sessionId: undefined,
+                    ...transportOptions,
+                  })
+                : new SSEClientTransport(mcpProxyServerUrl, transportOptions);
+          } catch (transportCreationError) {
+            console.error('Transport creation failed:', {
+              url: mcpProxyServerUrl.toString(),
+              transportType: isMetaMCP ? 'MetaMCP' : transportType,
+              error: transportCreationError instanceof Error ? transportCreationError.message : String(transportCreationError)
+            });
+            throw new Error(`Failed to create transport: ${transportCreationError instanceof Error ? transportCreationError.message : String(transportCreationError)}`);
+          }
+
+          console.debug('Transport created successfully, attempting connection...');
           await client.connect(transport as Transport);
 
           setClientTransport(transport);
@@ -565,13 +645,17 @@ export function useConnection({
             instructions: client.getInstructions(),
           });
         } catch (error) {
-          console.error(
-            `Failed to connect to MCP Server via the MCP Inspector Proxy: ${mcpProxyServerUrl}:`,
-            error,
-          );
+          // Enhanced error logging for better debugging
+          console.error('MCP connection failed - URL:', mcpProxyServerUrl?.toString() || 'unknown');
+          console.error('MCP connection failed - Transport:', isMetaMCP ? 'MetaMCP' : transportType);
+          console.error('MCP connection failed - Error type:', error?.constructor?.name || 'unknown');
+          console.error('MCP connection failed - Status:', error instanceof SseError ? error.code : 'unknown');
+          console.error('MCP connection failed - Message:', error instanceof Error ? error.message : String(error));
+          console.dir(error, { depth: null });
 
           // Check if it's a proxy auth error
           if (isProxyAuthError(error)) {
+            console.warn('Proxy authentication error detected');
             toast.error(
               "Please enter the session token from the proxy server console in the Configuration settings.",
             );
@@ -579,15 +663,27 @@ export function useConnection({
             return;
           }
 
-          const shouldRetry = await handleAuthError(error);
-          if (shouldRetry) {
-            return connect(undefined, retryCount + 1);
-          }
+          // Handle 401 authentication errors with enhanced logging
           if (is401Error(error)) {
+            console.warn('SSE authentication failed - attempting auth refresh', {
+              errorDetails: error instanceof Error ? error.message : String(error),
+              isRetry: retryCount > 0
+            });
+            
+            const shouldRetry = await handleAuthError(error);
+            if (shouldRetry && retryCount < 2) {
+              console.info('Auth refresh succeeded, retrying connection');
+              return connect(undefined, retryCount + 1);
+            } else if (retryCount >= 2) {
+              console.error('Maximum retry attempts reached for auth failures');
+              setConnectionStatus("error");
+              toast.error("Authentication failed after multiple retries");
+              return;
+            }
             // Don't set error state if we're about to redirect for auth
-
             return;
           }
+
           throw error;
         }
         setServerCapabilities(capabilities ?? null);
@@ -610,7 +706,26 @@ export function useConnection({
         setMcpClient(client);
         setConnectionStatus("connected");
       } catch (e) {
-        console.error(e);
+        // Enhanced outer catch with detailed error classification
+        console.error('Unexpected MCP connection error:', {
+          errorType: e?.constructor?.name || 'unknown',
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined,
+          serverUrl: url,
+          transportType: isMetaMCP ? 'MetaMCP' : transportType,
+          retryCount
+        });
+        console.error('Raw error object:', e);
+        
+        // Provide user-friendly error messages based on error type
+        if (e instanceof TypeError && e.message.includes('URL')) {
+          toast.error('Invalid server URL configuration');
+        } else if (e instanceof Error && e.message.includes('fetch')) {
+          toast.error('Network connection failed');
+        } else {
+          toast.error('Connection failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
+        }
+        
         setConnectionStatus("error");
       }
     },

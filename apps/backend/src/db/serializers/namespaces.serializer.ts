@@ -41,11 +41,12 @@ export class NamespacesSerializer {
         description: server.description,
         type: server.type,
         command: server.command,
+        cwd: server.cwd,
         args: server.args || [],
         url: server.url,
         env: server.env || {},
         bearerToken: server.bearerToken,
-        error_status: server.error_status,
+        error_status: server.error_status || "NONE", // Defensive fallback for missing error_status
         created_at: server.created_at.toISOString(),
         user_id: server.user_id,
         status: server.status,

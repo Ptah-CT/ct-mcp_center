@@ -78,6 +78,20 @@
       "when": 1757805390092,
       "tag": "0010_nifty_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1757887211026,
+      "tag": "0011_lumpy_marrow",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1757887315679,
+      "tag": "0012_clean_madelyne_pryor",
+      "breakpoints": true
     }
   ]
 }

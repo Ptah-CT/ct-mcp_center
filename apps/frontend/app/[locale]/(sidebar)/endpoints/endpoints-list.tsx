@@ -160,10 +160,25 @@ export function EndpointsList({ onRefresh }: EndpointsListProps) {
                   variant="ghost"
                   size="sm"
                   className="h-2 w-2 p-0 hover:bg-muted"
-                  onClick={() => {
+                  onClick={async () => {
                     const url = `${getAppUrl()}/metamcp/${endpoint.name}/sse`;
-                    navigator.clipboard.writeText(url);
-                    toast.success(t("endpoints:list.sseUrlCopied"));
+                    try {
+                      if (navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(url);
+                        toast.success(t("endpoints:list.sseUrlCopied"));
+                      } else {
+                        // Fallback for insecure contexts
+                        const textArea = document.createElement("textarea");
+                        textArea.value = url;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(textArea);
+                        toast.success(t("endpoints:list.sseUrlCopied"));
+                      }
+                    } catch (error) {
+                      toast.error(`Copy failed. URL: ${url}`);
+                    }
                   }}
                 >
                   <Copy className="h-2 w-2" />
@@ -217,10 +232,25 @@ export function EndpointsList({ onRefresh }: EndpointsListProps) {
                   variant="ghost"
                   size="sm"
                   className="h-2 w-2 p-0 hover:bg-muted"
-                  onClick={() => {
+                  onClick={async () => {
                     const url = `${getAppUrl()}/metamcp/${endpoint.name}/api`;
-                    navigator.clipboard.writeText(url);
-                    toast.success(t("endpoints:list.openApiUrlCopied"));
+                    try {
+                      if (navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(url);
+                        toast.success(t("endpoints:list.openApiUrlCopied"));
+                      } else {
+                        // Fallback for insecure contexts
+                        const textArea = document.createElement("textarea");
+                        textArea.value = url;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(textArea);
+                        toast.success(t("endpoints:list.openApiUrlCopied"));
+                      }
+                    } catch (error) {
+                      toast.error(`Copy failed. URL: ${url}`);
+                    }
                   }}
                 >
                   <Copy className="h-2 w-2" />
@@ -234,10 +264,25 @@ export function EndpointsList({ onRefresh }: EndpointsListProps) {
                   variant="ghost"
                   size="sm"
                   className="h-2 w-2 p-0 hover:bg-muted"
-                  onClick={() => {
+                  onClick={async () => {
                     const url = `${getAppUrl()}/metamcp/${endpoint.name}/api/openapi.json`;
-                    navigator.clipboard.writeText(url);
-                    toast.success(t("endpoints:list.openApiSchemaUrlCopied"));
+                    try {
+                      if (navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(url);
+                        toast.success(t("endpoints:list.openApiSchemaUrlCopied"));
+                      } else {
+                        // Fallback for insecure contexts
+                        const textArea = document.createElement("textarea");
+                        textArea.value = url;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(textArea);
+                        toast.success(t("endpoints:list.openApiSchemaUrlCopied"));
+                      }
+                    } catch (error) {
+                      toast.error(`Copy failed. URL: ${url}`);
+                    }
                   }}
                 >
                   <Copy className="h-2 w-2" />
@@ -327,28 +372,44 @@ export function EndpointsList({ onRefresh }: EndpointsListProps) {
       cell: ({ row }) => {
         const endpoint = row.original;
 
+        const copyToClipboard = async (url: string, successMessage: string) => {
+          try {
+            if (navigator.clipboard?.writeText) {
+              await navigator.clipboard.writeText(url);
+              toast.success(t(successMessage));
+            } else {
+              // Fallback for insecure contexts
+              const textArea = document.createElement("textarea");
+              textArea.value = url;
+              document.body.appendChild(textArea);
+              textArea.select();
+              document.execCommand("copy");
+              document.body.removeChild(textArea);
+              toast.success(t(successMessage));
+            }
+          } catch (error) {
+            toast.error(`Copy failed. URL: ${url}`);
+          }
+        };
+
         const copyFullSseUrl = () => {
           const baseUrl = `${getAppUrl()}/metamcp/${endpoint.name}/sse`;
-          navigator.clipboard.writeText(baseUrl);
-          toast.success(t("endpoints:list.sseUrlCopied"));
+          copyToClipboard(baseUrl, "endpoints:list.sseUrlCopied");
         };
 
         const copyFullShttpUrl = () => {
           const baseUrl = `${getAppUrl()}/metamcp/${endpoint.name}/mcp`;
-          navigator.clipboard.writeText(baseUrl);
-          toast.success(t("endpoints:list.shttpUrlCopied"));
+          copyToClipboard(baseUrl, "endpoints:list.shttpUrlCopied");
         };
 
         const copyFullApiUrl = () => {
           const baseUrl = `${getAppUrl()}/metamcp/${endpoint.name}/api`;
-          navigator.clipboard.writeText(baseUrl);
-          toast.success(t("endpoints:list.openApiUrlCopied"));
+          copyToClipboard(baseUrl, "endpoints:list.openApiUrlCopied");
         };
 
         const copyFullOpenApiSchemaUrl = () => {
           const baseUrl = `${getAppUrl()}/metamcp/${endpoint.name}/api/openapi.json`;
-          navigator.clipboard.writeText(baseUrl);
-          toast.success(t("endpoints:list.openApiSchemaUrlCopied"));
+          copyToClipboard(baseUrl, "endpoints:list.openApiSchemaUrlCopied");
         };
 
         const getApiKey = () => {
@@ -360,29 +421,25 @@ export function EndpointsList({ onRefresh }: EndpointsListProps) {
         const copyFullSseUrlWithApiKey = () => {
           const apiKey = getApiKey();
           const baseUrl = `${getAppUrl()}/metamcp/${endpoint.name}/sse?api_key=${apiKey}`;
-          navigator.clipboard.writeText(baseUrl);
-          toast.success(t("endpoints:list.sseUrlWithApiKeyCopied"));
+          copyToClipboard(baseUrl, "endpoints:list.sseUrlWithApiKeyCopied");
         };
 
         const copyFullShttpUrlWithApiKey = () => {
           const apiKey = getApiKey();
           const baseUrl = `${getAppUrl()}/metamcp/${endpoint.name}/mcp?api_key=${apiKey}`;
-          navigator.clipboard.writeText(baseUrl);
-          toast.success(t("endpoints:list.shttpUrlWithApiKeyCopied"));
+          copyToClipboard(baseUrl, "endpoints:list.shttpUrlWithApiKeyCopied");
         };
 
         const copyFullApiUrlWithApiKey = () => {
           const apiKey = getApiKey();
           const baseUrl = `${getAppUrl()}/metamcp/${endpoint.name}/api?api_key=${apiKey}`;
-          navigator.clipboard.writeText(baseUrl);
-          toast.success(t("endpoints:list.openApiUrlWithApiKeyCopied"));
+          copyToClipboard(baseUrl, "endpoints:list.openApiUrlWithApiKeyCopied");
         };
 
         const copyFullOpenApiSchemaUrlWithApiKey = () => {
           const apiKey = getApiKey();
           const baseUrl = `${getAppUrl()}/metamcp/${endpoint.name}/api/openapi.json?api_key=${apiKey}`;
-          navigator.clipboard.writeText(baseUrl);
-          toast.success(t("endpoints:list.openApiSchemaUrlWithApiKeyCopied"));
+          copyToClipboard(baseUrl, "endpoints:list.openApiSchemaUrlWithApiKeyCopied");
         };
 
         return (
@@ -399,7 +456,7 @@ export function EndpointsList({ onRefresh }: EndpointsListProps) {
                 {t("endpoints:list.editEndpoint")}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(endpoint.uuid)}
+                onClick={() => copyToClipboard(endpoint.uuid, "endpoints:list.copyEndpointUuid")}
               >
                 <Copy className="mr-2 h-4 w-4" />
                 {t("endpoints:list.copyEndpointUuid")}
