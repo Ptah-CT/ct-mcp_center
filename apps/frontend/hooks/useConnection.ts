@@ -58,8 +58,15 @@ const validateServerUrl = (url: string | null): string => {
   }
   
   try {
-    new URL(url);
-    return url;
+    // Handle relative URLs by providing a base URL
+    if (url.startsWith('/')) {
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : getAppUrl();
+      new URL(url, baseUrl);
+      return new URL(url, baseUrl).href;
+    } else {
+      new URL(url);
+      return url;
+    }
   } catch (error) {
     console.error('Invalid server URL format:', url, error);
     return getAppUrl();
