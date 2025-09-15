@@ -33,7 +33,7 @@ const defaultEnvironment = {
 };
 
 // Cooldown mechanism for failed STDIO commands
-const STDIO_COOLDOWN_DURATION = 10000; // 10 seconds
+const STDIO_COOLDOWN_DURATION = parseInt(process.env.STDIO_COOLDOWN_DURATION || "10000", 10);
 const stdioCommandCooldowns = new Map<string, number>();
 
 // Function to create a key for STDIO commands
@@ -215,48 +215,45 @@ serverRouter.get("/stdio", async (req, res) => {
     // Start the STDIO transport to establish connection to the MCP server process
     await transport.start();
 
-    // Create a simple proxy server that forwards messages between SSE and STDIO
-    const proxyServer = {
-      async connect(clientTransport: Transport) {
-        // Forward messages from client (SSE) to server (STDIO)
-        clientTransport.onmessage = async (message) => {
-          try {
-            await transport.send(message);
-          } catch (error) {
-            console.error("Error forwarding message to STDIO:", error);
-            clientTransport.onerror?.(error as Error);
-          }
-        };
-
-        // Forward messages from server (STDIO) to client (SSE)
-        transport.onmessage = async (message) => {
-          try {
-            await clientTransport.send(message);
-          } catch (error) {
-            console.error("Error forwarding message to SSE:", error);
-          }
-        };
-
-        // Handle errors and cleanup
-        transport.onerror = (error) => {
-          console.error("STDIO transport error:", error);
-          clientTransport.onerror?.(error);
-        };
-
-        transport.onclose = () => {
-          console.log("STDIO transport closed");
-          clientTransport.onclose?.();
-        };
-
-        clientTransport.onclose = () => {
-          console.log("SSE transport closed");
-          transport.close();
-        };
+    // Set up bidirectional message forwarding between SSE and STDIO transports
+    
+    // Forward messages from SSE client to STDIO server
+    sseTransport.onmessage = async (message) => {
+      try {
+        await transport.send(message);
+      } catch (error) {
+        console.error("Error forwarding message from SSE to STDIO:", error);
+        sseTransport.onerror?.(error as Error);
       }
     };
 
-    // Connect the SSE transport via the proxy server
-    await proxyServer.connect(sseTransport);
+    // Forward messages from STDIO server to SSE client
+    transport.onmessage = async (message) => {
+      try {
+        await sseTransport.send(message);
+      } catch (error) {
+        console.error("Error forwarding message from STDIO to SSE:", error);
+      }
+    };
+
+    // Handle errors and cleanup
+    transport.onerror = (error) => {
+      console.error("STDIO transport error:", error);
+      sseTransport.onerror?.(error);
+    };
+
+    transport.onclose = () => {
+      console.log("STDIO transport closed");
+      sseTransport.onclose?.();
+    };
+
+    sseTransport.onclose = () => {
+      console.log("SSE transport closed");
+      transport.close();
+    };
+
+    // Start the SSE server transport to handle incoming connections
+    await sseTransport.start();
 
     console.log("SSE transport connected to STDIO transport via proxy");
     
