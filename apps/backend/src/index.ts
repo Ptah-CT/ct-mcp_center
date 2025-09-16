@@ -8,6 +8,7 @@ import { mcpServerPool } from "./lib/metamcp/mcp-server-pool";
 import { metaMcpServerPool } from "./lib/metamcp/metamcp-server-pool";
 import { initializeIdleServers } from "./lib/startup";
 import mcpProxyRouter from "./routers/mcp-proxy";
+import { stopMetaMcpCleanup } from "./routers/mcp-proxy/metamcp";
 import oauthRouter from "./routers/oauth";
 import publicEndpointsRouter from "./routers/public-metamcp";
 import trpcRouter from "./routers/trpc";
@@ -117,7 +118,7 @@ app.post("/admin/redis/reconnect", async (req, res) => {
   }
 });
 
-app.listen(32009, "0.0.0.0", async () => {
+const server = app.listen(32009, "0.0.0.0", async () => {
   console.log(`Server is running on port 32009`);
   console.log(`Auth routes available at: http://localhost:32009/api/auth`);
   console.log(
@@ -137,6 +138,22 @@ app.listen(32009, "0.0.0.0", async () => {
     initializeIdleServers,
   );
 });
+
+server.on("close", () => {
+  console.log("HTTP server closed. Cleaning up MetaMCP timers.");
+  stopMetaMcpCleanup();
+});
+
+const handleShutdown = (signal: NodeJS.Signals) => {
+  console.log(`Received ${signal}. Initiating graceful shutdown.`);
+  stopMetaMcpCleanup();
+  server.close(() => {
+    console.log("HTTP server shutdown complete.");
+  });
+};
+
+process.once("SIGTERM", () => handleShutdown("SIGTERM"));
+process.once("SIGINT", () => handleShutdown("SIGINT"));
 
 app.get("/health", async (req, res) => {
   try {
