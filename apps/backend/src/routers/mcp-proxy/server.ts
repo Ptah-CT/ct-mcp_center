@@ -1,20 +1,21 @@
 import { getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import express from "express";
 
 import { mcpServersRepository } from "../../db/repositories";
 import { betterAuthMcpMiddleware } from "../../middleware/better-auth-mcp.middleware";
 import { ProcessManagedStdioTransport } from "../../lib/stdio-transport/process-managed-transport";
 import { logger } from "../../lib/logging/logfire";
+import {
+  deleteTransport,
+  getTransport,
+  setTransport,
+} from "../../lib/session-store";
 
 const serverRouter = express.Router();
 
 // Apply better auth middleware to all server routes - DISABLED for development
 // serverRouter.use(betterAuthMcpMiddleware);
-
-// Map to store transports by sessionId
-const webAppTransports: Map<string, Transport> = new Map<string, Transport>();
 
 // Function to handle connection cleanup
 const handleConnectionClose = () => {
@@ -34,7 +35,10 @@ const defaultEnvironment = {
 };
 
 // Cooldown mechanism for failed STDIO commands
-const STDIO_COOLDOWN_DURATION = parseInt(process.env.STDIO_COOLDOWN_DURATION || "10000", 10);
+const STDIO_COOLDOWN_DURATION = parseInt(
+  process.env.STDIO_COOLDOWN_DURATION || "10000",
+  10,
+);
 const stdioCommandCooldowns = new Map<string, number>();
 
 // Function to create a key for STDIO commands
@@ -96,12 +100,12 @@ const extractServerUuidFromStdioCommand = async (
         logger.debug("Checking MCP server match", {
           serverName: server.name,
           serverUuid: server.uuid,
-          command: serverCommand
+          command: serverCommand,
         });
         if (serverCommand === fullCommand) {
           logger.info("MCP server exact match found", {
             serverName: server.name,
-            serverUuid: server.uuid
+            serverUuid: server.uuid,
           });
           return server.uuid;
         }
@@ -113,7 +117,7 @@ const extractServerUuidFromStdioCommand = async (
       if (server.type === "STDIO" && server.command === command) {
         logger.debug("MCP server command match found", {
           serverName: server.name,
-          serverUuid: server.uuid
+          serverUuid: server.uuid,
         });
         return server.uuid;
       }
@@ -133,9 +137,7 @@ serverRouter.post("/message", async (req, res) => {
     const sessionId = req.query.sessionId;
     // console.log(`Received POST message for sessionId ${sessionId}`);
 
-    const transport = webAppTransports.get(
-      sessionId as string,
-    ) as SSEServerTransport;
+    const transport = getTransport<SSEServerTransport>(sessionId as string);
     if (!transport) {
       res.status(404).end("Session not found");
       return;
@@ -151,7 +153,7 @@ serverRouter.post("/message", async (req, res) => {
 serverRouter.get("/stdio", async (req, res) => {
   try {
     const { command, args, env } = req.query;
-    
+
     if (!command || typeof command !== "string") {
       return res.status(400).json({ error: "Command is required" });
     }
@@ -191,12 +193,14 @@ serverRouter.get("/stdio", async (req, res) => {
 
     // Check cooldown
     if (isStdioInCooldown(command, parsedArgs, parsedEnv)) {
-      return res.status(429).json({ 
-        error: "Command is in cooldown period due to recent failures" 
+      return res.status(429).json({
+        error: "Command is in cooldown period due to recent failures",
       });
     }
 
-    logger.info(`Creating STDIO transport for: ${command} ${parsedArgs.join(" ")}`);
+    logger.info(
+      `Creating STDIO transport for: ${command} ${parsedArgs.join(" ")}`,
+    );
 
     // Create STDIO transport
     const transport = new ProcessManagedStdioTransport({
@@ -204,7 +208,10 @@ serverRouter.get("/stdio", async (req, res) => {
       args: parsedArgs,
       env: { ...defaultEnvironment, ...parsedEnv },
       onprocesscrash: (exitCode, signal) => {
-        logger.error(`STDIO process crashed: exit=${exitCode}, signal=${signal}`, { exitCode, signal });
+        logger.error(
+          `STDIO process crashed: exit=${exitCode}, signal=${signal}`,
+          { exitCode, signal },
+        );
         setStdioCooldown(command, parsedArgs, parsedEnv);
       },
     });
@@ -212,13 +219,27 @@ serverRouter.get("/stdio", async (req, res) => {
     // Create SSE server transport
     const sseTransport = new SSEServerTransport("/stdio", res);
 
-    logger.info(`Attempting to handle SSE connection for: ${command} ${parsedArgs.join(" ")}`);
+    const sessionId = sseTransport.sessionId;
+    setTransport(sessionId, sseTransport);
+
+    const removeSessionTransport = () => {
+      const storedTransport = deleteTransport<SSEServerTransport>(sessionId);
+      if (storedTransport) {
+        logger.info("Removed STDIO SSE transport from session store", {
+          sessionId,
+        });
+      }
+    };
+
+    logger.info(
+      `Attempting to handle SSE connection for: ${command} ${parsedArgs.join(" ")}`,
+    );
 
     // Start the STDIO transport to establish connection to the MCP server process
     await transport.start();
 
     // Set up bidirectional message forwarding between SSE and STDIO transports
-    
+
     // Forward messages from SSE client to STDIO server
     sseTransport.onmessage = async (message) => {
       try {
@@ -244,32 +265,64 @@ serverRouter.get("/stdio", async (req, res) => {
       sseTransport.onerror?.(error);
     };
 
+    let closing = false;
+    let cleanedUp = false;
+
+    const cleanupSession = () => {
+      if (!cleanedUp) {
+        cleanedUp = true;
+        removeSessionTransport();
+      }
+    };
+
+    const closeTransportOnce = () => {
+      if (!closing) {
+        closing = true;
+        transport.close();
+      }
+    };
+
+    res.on("close", () => {
+      logger.info("SSE HTTP response closed", { sessionId });
+      cleanupSession();
+      closeTransportOnce();
+    });
+
     transport.onclose = () => {
-      logger.info("STDIO transport closed");
-      sseTransport.onclose?.();
+      logger.info("STDIO transport closed", { sessionId });
+      cleanupSession();
+      if (!closing) {
+        closing = true;
+        sseTransport.onclose?.();
+      }
     };
 
     sseTransport.onclose = () => {
-      logger.info("SSE transport closed");
-      transport.close();
+      logger.info("SSE transport closed", { sessionId });
+      cleanupSession();
+      closeTransportOnce();
     };
 
     // Start the SSE server transport to handle incoming connections
     await sseTransport.start();
 
     logger.info("SSE transport connected to STDIO transport via proxy");
-    
   } catch (error) {
     logger.error("Error in STDIO SSE endpoint", error, {
-      stack: error instanceof Error ? error.stack : 'No stack trace',
+      stack: error instanceof Error ? error.stack : "No stack trace",
       details: {
-        name: error instanceof Error ? error.name : 'Unknown',
+        name: error instanceof Error ? error.name : "Unknown",
         message: error instanceof Error ? error.message : String(error),
-        cause: error instanceof Error ? error.cause : undefined
-      }
+        cause: error instanceof Error ? error.cause : undefined,
+      },
     });
     if (!res.headersSent) {
-      res.status(500).json({ error: "Internal server error", details: error instanceof Error ? error.message : String(error) });
+      res
+        .status(500)
+        .json({
+          error: "Internal server error",
+          details: error instanceof Error ? error.message : String(error),
+        });
     }
   }
 });
