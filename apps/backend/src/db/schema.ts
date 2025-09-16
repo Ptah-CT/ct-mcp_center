@@ -49,7 +49,11 @@ export const mcpServersTable = pgTable(
     env: jsonb("env")
       .$type<{ [key: string]: string }>()
       .notNull()
-      .default(sql`'{}'::jsonb`),
+      .default(sql`'{}'::jsonb`)
+      .$validate((value: any) => {
+        if (typeof value !== 'object' || value === null) return false;
+        return Object.keys(value).every(key => typeof key === 'string' && typeof value[key] === 'string');
+      }),
     url: text("url"),
     error_status: mcpServerErrorStatusEnum("error_status")
       .notNull()
@@ -118,56 +122,7 @@ export const oauthClientsTable = pgTable("oauth_clients", {
     .defaultNow(),
 });
 
-// OAuth Authorization Codes table
-export const oauthAuthorizationCodesTable = pgTable(
-  "oauth_authorization_codes",
-  {
-    code: text("code").primaryKey(),
-    client_id: text("client_id")
-      .notNull()
-      .references(() => oauthClientsTable.client_id, { onDelete: "cascade" }),
-    redirect_uri: text("redirect_uri").notNull(),
-    scope: text("scope").notNull().default("admin"),
-    user_id: text("user_id")
-      .notNull()
-      .references(() => usersTable.id, { onDelete: "cascade" }),
-    code_challenge: text("code_challenge"),
-    code_challenge_method: text("code_challenge_method"),
-    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
 
-
-    index("oauth_authorization_codes_expires_at_idx").on(table.expires_at),
-  ],
-);
-
-// OAuth Access Tokens table
-export const oauthAccessTokensTable = pgTable(
-  "oauth_access_tokens",
-  {
-    access_token: text("access_token").primaryKey(),
-    client_id: text("client_id")
-      .notNull()
-      .references(() => oauthClientsTable.client_id, { onDelete: "cascade" }),
-    user_id: text("user_id")
-      .notNull()
-      .references(() => usersTable.id, { onDelete: "cascade" }),
-    scope: text("scope").notNull().default("admin"),
-    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-
-
-    index("oauth_access_tokens_expires_at_idx").on(table.expires_at),
-  ],
-);
 
 // Tool Cache Metadata table for cache configuration
 export const toolCacheMetadataTable = pgTable(
@@ -212,51 +167,37 @@ export const performanceMetricsTable = pgTable(
       },
     ),
     tool_name: text("tool_name"),
-    additional_data: jsonb("additional_data").$type<Record<string, any>>(),
+    additional_data: jsonb("additional_data")
+      .$type<Record<string, any>>()
+      .$validate((value: any) => {
+        if (value === null || value === undefined) return true;
+        if (typeof value !== 'object') return false;
+        return Object.keys(value).every(key => typeof key === 'string');
+      }),
     recorded_at: timestamp("recorded_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
-
     index("performance_metrics_server_uuid_idx").on(table.server_uuid),
-
-
+    index("performance_metrics_type_recorded_idx").on(table.metric_type, table.recorded_at),
+    index("performance_metrics_namespace_uuid_idx").on(table.namespace_uuid),
+    index("performance_metrics_recorded_at_idx").on(table.recorded_at),
+    // CHECK constraint for positive metric values - will be added via migration
   ],
 );
-// Users table
-export const usersTable = pgTable("users", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-  email_verified: boolean("email_verified").notNull().default(false),
-  image: text("image"),
-  created_at: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updated_at: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-}, (table) => [
-  unique().on(table.email),
-]);
-
 // API Keys table
 export const apiKeysTable = pgTable("api_keys", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   key: text("key").notNull(),
-  user_id: text("user_id")
-    .notNull()
-    .references(() => usersTable.id, { onDelete: "cascade" }),
   created_at: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
   is_active: boolean("is_active").notNull().default(true),
 }, (table) => [
   unique().on(table.key),
-  unique().on(table.user_id, table.name),
-  index("api_keys_user_id_idx").on(table.user_id),
+  unique().on(table.name),
 ]);
 
 // Namespaces table
@@ -300,7 +241,15 @@ export const toolsTable = pgTable("tools", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   description: text("description"),
-  tool_schema: jsonb("tool_schema").notNull(),
+  tool_schema: jsonb("tool_schema")
+    .notNull()
+    .$validate((value: any) => {
+      if (typeof value !== 'object' || value === null) return false;
+      // Basic MCP tool schema validation
+      return typeof value.name === 'string' && 
+             typeof value.description === 'string' &&
+             typeof value.inputSchema === 'object';
+    }),
   created_at: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -371,8 +320,18 @@ export const oauthSessionsTable = pgTable("oauth_sessions", {
   client_information: jsonb("client_information")
     .$type<{ [key: string]: string }>()
     .notNull()
-    .default(sql`'{}'::jsonb`),
-  tokens: jsonb("tokens").$type<Record<string, any>>(),
+    .default(sql`'{}'::jsonb`)
+    .$validate((value: any) => {
+      if (typeof value !== 'object' || value === null) return false;
+      return Object.keys(value).every(key => typeof key === 'string' && typeof value[key] === 'string');
+    }),
+  tokens: jsonb("tokens")
+    .$type<Record<string, any>>()
+    .$validate((value: any) => {
+      if (value === null || value === undefined) return true;
+      if (typeof value !== 'object') return false;
+      return Object.keys(value).every(key => typeof key === 'string');
+    }),
   code_verifier: text("code_verifier"),
   created_at: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -385,63 +344,4 @@ export const oauthSessionsTable = pgTable("oauth_sessions", {
   index("oauth_sessions_mcp_server_uuid_idx").on(table.mcp_server_uuid),
 ]);
 
-// Sessions table
-export const sessionsTable = pgTable("sessions", {
-  id: text("id").primaryKey(),
-  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
-  token: text("token").notNull(),
-  created_at: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updated_at: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  ip_address: text("ip_address"),
-  user_agent: text("user_agent"),
-  user_id: text("user_id")
-    .notNull()
-    .references(() => usersTable.id, { onDelete: "cascade" }),
-}, (table) => [
-  unique().on(table.token),
-  index("sessions_user_id_idx").on(table.user_id),
-  index("sessions_token_idx").on(table.token),
-]);
 
-// Accounts table
-export const accountsTable = pgTable("accounts", {
-  id: text("id").primaryKey(),
-  account_id: text("account_id").notNull(),
-  provider_id: text("provider_id").notNull(),
-  user_id: text("user_id")
-    .notNull()
-    .references(() => usersTable.id, { onDelete: "cascade" }),
-  access_token: text("access_token"),
-  refresh_token: text("refresh_token"),
-  id_token: text("id_token"),
-  access_token_expires_at: timestamp("access_token_expires_at", { withTimezone: true }),
-  refresh_token_expires_at: timestamp("refresh_token_expires_at", { withTimezone: true }),
-  scope: text("scope"),
-  password: text("password"),
-  created_at: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updated_at: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-}, (table) => [
-  index("accounts_user_id_idx").on(table.user_id),
-]);
-
-// Verifications table
-export const verificationsTable = pgTable("verifications", {
-  id: text("id").primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
-  created_at: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updated_at: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});

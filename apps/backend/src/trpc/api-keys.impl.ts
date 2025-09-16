@@ -11,10 +11,10 @@ import {
 } from "@repo/zod-types";
 import { z } from "zod";
 
-import { ApiKeysRepository } from "../db/repositories";
+import { apiKeysRepository } from "../db/repositories";
 import { ApiKeysSerializer } from "../db/serializers";
 
-const apiKeysRepository = new ApiKeysRepository();
+// apiKeysRepository imported above
 
 export const apiKeysImplementations = {
   create: async (

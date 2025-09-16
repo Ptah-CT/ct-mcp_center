@@ -2,7 +2,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
 
-import { ApiKeysRepository } from "../../db/repositories/api-keys.repo";
+import { apiKeysRepository } from "../../db/repositories/api-keys.repo";
 import { createServer } from "../../lib/metamcp/index";
 import {
   deleteTransport,
@@ -15,7 +15,7 @@ const metamcpRouter = express.Router();
 
 // Auth middleware removed - no longer needed after auth deactivation
 
-const apiKeysRepository = new ApiKeysRepository();
+// apiKeysRepository imported above
 
 /**
  * Extract API-Key from request headers

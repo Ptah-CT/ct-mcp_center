@@ -1,23 +1,40 @@
-import {
-  OAuthAccessToken,
-  OAuthAccessTokenCreateInput,
-  OAuthAuthorizationCode,
-  OAuthAuthorizationCodeCreateInput,
-  OAuthClient,
-  OAuthClientCreateInput,
-} from "@repo/zod-types";
-import { eq, lt } from "drizzle-orm";
-
+import { eq } from "drizzle-orm";
 import { db } from "../index";
 import {
-  oauthAccessTokensTable,
-  oauthAuthorizationCodesTable,
+  oauthSessionsTable,
   oauthClientsTable,
 } from "../schema";
 
-export class OAuthRepository {
-  // ===== Registered Clients =====
+export interface OAuthClient {
+  client_id: string;
+  client_secret: string | null;
+  client_name: string;
+  redirect_uris: string[];
+  grant_types: string[];
+  response_types: string[];
+  token_endpoint_auth_method: string;
+  scope: string | null;
+  client_uri: string | null;
+  logo_uri: string | null;
+  contacts: string[] | null;
+  tos_uri: string | null;
+  policy_uri: string | null;
+  software_id: string | null;
+  software_version: string | null;
+}
 
+export interface OAuthSession {
+  uuid: string;
+  mcp_server_uuid: string;
+  client_information: { [key: string]: string };
+  tokens: Record<string, any> | null;
+  code_verifier: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+class OAuthRepository {
+  // Client management
   async getClient(clientId: string): Promise<OAuthClient | null> {
     const result = await db
       .select()
@@ -27,94 +44,88 @@ export class OAuthRepository {
     return result[0] || null;
   }
 
-  async upsertClient(clientData: OAuthClientCreateInput): Promise<void> {
-    await db
+  async createClient(data: Omit<OAuthClient, 'created_at' | 'updated_at'>): Promise<OAuthClient> {
+    const [client] = await db
       .insert(oauthClientsTable)
-      .values(clientData)
-      .onConflictDoUpdate({
-        target: oauthClientsTable.client_id,
-        set: {
-          redirect_uris: clientData.redirect_uris,
-          updated_at: new Date(),
-        },
-      });
+      .values(data)
+      .returning();
+    return client;
   }
 
-  // ===== Authorization Codes =====
-
-  async getAuthCode(code: string): Promise<OAuthAuthorizationCode | null> {
+  // Session management for MCP servers
+  async getSession(mcpServerUuid: string): Promise<OAuthSession | null> {
     const result = await db
       .select()
-      .from(oauthAuthorizationCodesTable)
-      .where(eq(oauthAuthorizationCodesTable.code, code))
+      .from(oauthSessionsTable)
+      .where(eq(oauthSessionsTable.mcp_server_uuid, mcpServerUuid))
       .limit(1);
     return result[0] || null;
   }
 
-  async setAuthCode(
-    code: string,
-    data: OAuthAuthorizationCodeCreateInput,
-  ): Promise<void> {
-    await db.insert(oauthAuthorizationCodesTable).values({
-      code,
-      client_id: data.client_id,
-      redirect_uri: data.redirect_uri,
-      scope: data.scope,
-      user_id: data.user_id,
-      code_challenge: data.code_challenge,
-      code_challenge_method: data.code_challenge_method,
-      expires_at: new Date(data.expires_at),
-    });
+  async createSession(data: {
+    mcp_server_uuid: string;
+    client_information: { [key: string]: string };
+    tokens?: Record<string, any>;
+    code_verifier?: string;
+  }): Promise<OAuthSession> {
+    const [session] = await db
+      .insert(oauthSessionsTable)
+      .values(data)
+      .returning();
+    return session;
   }
 
-  async deleteAuthCode(code: string): Promise<void> {
+  async updateSession(
+    mcpServerUuid: string,
+    data: {
+      tokens?: Record<string, any>;
+      code_verifier?: string;
+      client_information?: { [key: string]: string };
+    }
+  ): Promise<OAuthSession | null> {
+    const [session] = await db
+      .update(oauthSessionsTable)
+      .set(data)
+      .where(eq(oauthSessionsTable.mcp_server_uuid, mcpServerUuid))
+      .returning();
+    return session || null;
+  }
+
+  async deleteSession(mcpServerUuid: string): Promise<void> {
     await db
-      .delete(oauthAuthorizationCodesTable)
-      .where(eq(oauthAuthorizationCodesTable.code, code));
+      .delete(oauthSessionsTable)
+      .where(eq(oauthSessionsTable.mcp_server_uuid, mcpServerUuid));
   }
 
-  // ===== Access Tokens =====
-
-  async getAccessToken(token: string): Promise<OAuthAccessToken | null> {
-    const result = await db
-      .select()
-      .from(oauthAccessTokensTable)
-      .where(eq(oauthAccessTokensTable.access_token, token))
-      .limit(1);
-    return result[0] || null;
+  // Legacy OAuth methods - deprecated but kept for compatibility
+  async getAccessToken(token: string): Promise<null> {
+    // OAuth access tokens removed - MCP servers use sessions instead
+    return null;
   }
 
-  async setAccessToken(
-    token: string,
-    data: OAuthAccessTokenCreateInput,
-  ): Promise<void> {
-    await db.insert(oauthAccessTokensTable).values({
-      access_token: token,
-      client_id: data.client_id,
-      user_id: data.user_id,
-      scope: data.scope,
-      expires_at: new Date(data.expires_at),
-    });
+  async setAccessToken(): Promise<void> {
+    // OAuth access tokens removed - MCP servers use sessions instead
+    return;
   }
 
-  async deleteAccessToken(token: string): Promise<void> {
-    await db
-      .delete(oauthAccessTokensTable)
-      .where(eq(oauthAccessTokensTable.access_token, token));
+  async getAuthorizationCode(code: string): Promise<null> {
+    // OAuth authorization codes removed - MCP servers use sessions instead
+    return null;
   }
 
-  // ===== Cleanup =====
+  async setAuthorizationCode(): Promise<void> {
+    // OAuth authorization codes removed - MCP servers use sessions instead
+    return;
+  }
 
-  async cleanupExpired(): Promise<void> {
-    const now = new Date();
-    await Promise.all([
-      db
-        .delete(oauthAuthorizationCodesTable)
-        .where(lt(oauthAuthorizationCodesTable.expires_at, now)),
-      db
-        .delete(oauthAccessTokensTable)
-        .where(lt(oauthAccessTokensTable.expires_at, now)),
-    ]);
+  async revokeAccessToken(token: string): Promise<void> {
+    // OAuth access tokens removed - MCP servers use sessions instead
+    return;
+  }
+
+  async cleanupExpiredTokens(): Promise<void> {
+    // OAuth tokens removed - MCP servers use sessions instead
+    return;
   }
 }
 

@@ -12,11 +12,9 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LogsStatusIndicator } from "@/components/logs-status-indicator";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
@@ -107,58 +105,6 @@ function UserInfoFooter() {
           </div>
           <p className="text-xs text-muted-foreground">v2.4.14</p>
         </div>
-      </div>
-    </SidebarFooter>
-  );
-} = useTranslations();
-  const locale = useLocale();
-  const [user, setUser] = useState<any>(null);
-
-  // Get user info
-  useEffect(() => {
-    authClient.getSession().then((session) => {
-      if (session?.data?.user) {
-        setUser(session.data.user);
-      }
-    });
-  }, []);
-
-  const handleSignOut = async () => {
-    await authClient.signOut();
-    window.location.href = getLocalizedPath("/login", locale);
-  };
-
-  return (
-    <SidebarFooter>
-      <div className="flex flex-col gap-4 p-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            <ThemeToggle />
-          </div>
-          <p className="text-xs text-muted-foreground">v2.4.14</p>
-        </div>
-        <Separator />
-        {user && (
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">
-                {user.name || user.email}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {user.email}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSignOut}
-              className="w-full"
-            >
-              {t("auth:signOut")}
-            </Button>
-          </div>
-        )}
       </div>
     </SidebarFooter>
   );

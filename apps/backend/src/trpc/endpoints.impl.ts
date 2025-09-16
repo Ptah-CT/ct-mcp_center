@@ -10,14 +10,14 @@ import {
 import { z } from "zod";
 
 import {
-  ApiKeysRepository,
+  apiKeysRepository,
   endpointsRepository,
   mcpServersRepository,
   namespacesRepository,
 } from "../db/repositories";
 import { EndpointsSerializer } from "../db/serializers";
 
-const apiKeysRepository = new ApiKeysRepository();
+// apiKeysRepository imported above
 
 export const endpointsImplementations = {
   create: async (
