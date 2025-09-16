@@ -222,7 +222,8 @@ export const performanceMetricsTable = pgTable(
     index("performance_metrics_server_uuid_idx").on(table.server_uuid),
 
 
-
+  ],
+);
 // Users table
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
