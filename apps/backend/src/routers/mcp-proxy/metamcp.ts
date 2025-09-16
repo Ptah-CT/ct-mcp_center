@@ -1,10 +1,14 @@
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import express from "express";
 
 import { ApiKeysRepository } from "../../db/repositories/api-keys.repo";
 import { createServer } from "../../lib/metamcp/index";
+import {
+  deleteTransport,
+  getTransport,
+  setTransport,
+} from "../../lib/session-store";
 import { betterAuthMcpMiddleware } from "../../middleware/better-auth-mcp.middleware";
 
 const metamcpRouter = express.Router();
@@ -58,7 +62,6 @@ async function validateApiKeyAndGetContext(apiKey: string): Promise<{
     return null;
   }
 }
-const webAppTransports: Map<string, Transport> = new Map<string, Transport>(); // Web app transports by API-Key
 const metamcpServers: Map<
   string,
   {
@@ -90,9 +93,8 @@ const cleanupApiKey = async (apiKey: string) => {
   console.log(`Cleaning up MetaMCP API-Key ${apiKey}`);
 
   // Clean up transport
-  const transport = webAppTransports.get(apiKey);
+  const transport = deleteTransport(apiKey);
   if (transport) {
-    webAppTransports.delete(apiKey);
     await transport.close();
   }
 
@@ -163,9 +165,7 @@ metamcpRouter.get("/:uuid/mcp", async (req, res) => {
   //   `Received GET message for MetaMCP namespace ${namespaceUuid} API-Key ${apiKey}`,
   // );
   try {
-    const transport = webAppTransports.get(
-      apiKey,
-    ) as StreamableHTTPServerTransport;
+    const transport = getTransport<StreamableHTTPServerTransport>(apiKey);
     if (!transport) {
       res.status(404).end("Transport not found for API-Key");
       return;
@@ -254,7 +254,7 @@ metamcpRouter.get("/:uuid/sse", async (req, res) => {
       `Created MetaMCP server instance for API key ${authContext.keyUuid}`,
     );
 
-    webAppTransports.set(apiKey, webAppTransport);
+    setTransport(apiKey, webAppTransport);
     metamcpServers.set(apiKey, mcpServerInstance);
 
     // Handle cleanup when connection closes
@@ -293,7 +293,7 @@ metamcpRouter.post("/:uuid/message", async (req, res) => {
     //   `Received POST message for MetaMCP namespace ${namespaceUuid} API-Key ${authContext.keyUuid}`,
     // );
 
-    const transport = webAppTransports.get(apiKey) as SSEServerTransport;
+    const transport = getTransport<SSEServerTransport>(apiKey);
     if (!transport) {
       res.status(404).end("Transport not found for API-Key");
       return;
