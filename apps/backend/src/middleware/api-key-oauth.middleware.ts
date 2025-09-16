@@ -1,11 +1,7 @@
-import { DatabaseEndpoint } from "@repo/zod-types";
-import express from "express";
+// Auth rate limiter import removed - no longer needed after auth deactivation
 
-import { ApiKeysRepository } from "../db/repositories/api-keys.repo";
-import {
-  authRateLimiter,
-  getAuthRateLimitIdentifier,
-} from "../lib/auth-rate-limiter";
+import express from "express";
+import { ApiKeysRepository, apiKeysRepository } from "../db/repositories/api-keys.repo";
 
 // Extend Express Request interface for our custom properties
 export interface ApiKeyAuthenticatedRequest extends express.Request {
@@ -209,17 +205,17 @@ export const authenticateApiKey = async (
         return next();
       } else {
         // API key invalid - check rate limiting
-        const rateLimitId = getAuthRateLimitIdentifier(req, endpoint);
-        authRateLimiter.recordFailedAttempt(rateLimitId);
+        // const rateLimitId = getAuthRateLimitIdentifier(req, endpoint);
+        // authRateLimiter.recordFailedAttempt(rateLimitId);
 
-        if (authRateLimiter.isRateLimited(rateLimitId)) {
-          return res.status(429).json({
-            error: "too_many_requests",
-            error_description:
-              "Too many failed authentication attempts. Please try again later.",
-            timestamp: new Date().toISOString(),
-          });
-        }
+        // if (authRateLimiter.isRateLimited(rateLimitId)) {
+        //   return res.status(429).json({
+        //     error: "too_many_requests",
+        //     error_description:
+        //       "Too many failed authentication attempts. Please try again later.",
+        //     timestamp: new Date().toISOString(),
+        //   });
+        // }
 
         return res.status(401).json({
           error: "invalid_api_key",
@@ -279,17 +275,17 @@ export const authenticateApiKey = async (
         return next();
       } else {
         // Both OAuth and API key failed - check rate limiting
-        const rateLimitId = getAuthRateLimitIdentifier(req, endpoint);
-        authRateLimiter.recordFailedAttempt(rateLimitId);
+        // const rateLimitId = getAuthRateLimitIdentifier(req, endpoint);
+        // authRateLimiter.recordFailedAttempt(rateLimitId);
 
-        if (authRateLimiter.isRateLimited(rateLimitId)) {
-          return res.status(429).json({
-            error: "too_many_requests",
-            error_description:
-              "Too many failed authentication attempts. Please try again later.",
-            timestamp: new Date().toISOString(),
-          });
-        }
+        // if (authRateLimiter.isRateLimited(rateLimitId)) {
+        //   return res.status(429).json({
+        //     error: "too_many_requests",
+        //     error_description:
+        //       "Too many failed authentication attempts. Please try again later.",
+        //     timestamp: new Date().toISOString(),
+        //   });
+        // }
 
         return res.status(401).json({
           error: "invalid_credentials",
@@ -327,17 +323,17 @@ export const authenticateApiKey = async (
         return next();
       } else {
         // OAuth token invalid - check rate limiting
-        const rateLimitId = getAuthRateLimitIdentifier(req, endpoint);
-        authRateLimiter.recordFailedAttempt(rateLimitId);
+        // const rateLimitId = getAuthRateLimitIdentifier(req, endpoint);
+        // authRateLimiter.recordFailedAttempt(rateLimitId);
 
-        if (authRateLimiter.isRateLimited(rateLimitId)) {
-          return res.status(429).json({
-            error: "too_many_requests",
-            error_description:
-              "Too many failed authentication attempts. Please try again later.",
-            timestamp: new Date().toISOString(),
-          });
-        }
+        // if (authRateLimiter.isRateLimited(rateLimitId)) {
+        //   return res.status(429).json({
+        //     error: "too_many_requests",
+        //     error_description:
+        //       "Too many failed authentication attempts. Please try again later.",
+        //     timestamp: new Date().toISOString(),
+        //   });
+        // }
 
         return res.status(401).json({
           error: "invalid_token",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { McpServerTypeEnum } from "./mcp-servers.zod";
-import { OAuthTokensSchema } from "./oauth.zod";
+// OAuth import removed - no longer needed after auth deactivation
 
 export const IOTypeSchema = z.enum(["overlapped", "pipe", "ignore", "inherit"]);
 
@@ -19,7 +19,7 @@ export const ServerParametersSchema = z.object({
   created_at: z.string(),
   status: z.string(),
   error_status: z.string().optional(),
-  oauth_tokens: OAuthTokensSchema.nullable().optional(),
+  // oauth_tokens removed - no longer needed after auth deactivation
   bearerToken: z.string().nullable().optional(),
 });
 

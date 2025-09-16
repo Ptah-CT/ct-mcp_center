@@ -7,6 +7,7 @@ import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import spawn from "cross-spawn";
 
 import { ReadBuffer, serializeMessage } from "./shared";
+import { logger } from "../logging/logfire";
 
 export type StdioServerParameters = {
   /**
@@ -223,11 +224,10 @@ export class ProcessManagedStdioTransport implements Transport {
           return;
         }
 
-        console.error(`Failed to spawn MCP server process:`, {
+        logger.error(`Failed to spawn MCP server process`, error, {
           command: this._serverParams.command,
           args: this._serverParams.args,
           cwd: this._serverParams.cwd || process.cwd(),
-          error: error.message,
           env: Object.keys({
             ...getDefaultEnvironment(),
             ...this._serverParams.env,
@@ -245,8 +245,8 @@ export class ProcessManagedStdioTransport implements Transport {
       this._process.on("close", (code, signal) => {
         // Only emit crash event if this wasn't a clean shutdown
         if (!this._isCleanup && (code !== 0 || signal)) {
-          console.warn(`Process crashed with code: ${code}, signal: ${signal}`);
-          console.log(
+          logger.error(`Process crashed with code: ${code}, signal: ${signal}`, null, { code, signal });
+          logger.debug(
             `Calling onprocesscrash handler: ${this.onprocesscrash ? "handler exists" : "no handler"}`,
           );
           this.onprocesscrash?.(code, signal);
@@ -324,7 +324,7 @@ export class ProcessManagedStdioTransport implements Transport {
         process.kill(-this._process.pid, "SIGTERM");
       } catch (error) {
         // Process might already be terminated, ignore errors
-        console.warn("Failed to kill process group:", error);
+        logger.warn("Failed to kill process group", error);
       }
     }
 

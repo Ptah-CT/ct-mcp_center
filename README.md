@@ -262,6 +262,10 @@ For more details and alternative approaches, see [issue #76](https://github.com/
 - 🏢 **Multi-tenancy**: Designed for organizations to deploy on their own machines. Supports both private and public access scopes. Users can create MCPs, namespaces, endpoints, and API keys for themselves or for everyone. Public API keys cannot access private MetaMCPs.
 - ⚙️ **Separate Registration Controls**: Administrators can independently control UI registration and SSO/OAuth registration through the settings page, allowing for flexible enterprise deployment scenarios.
 
+### Frontend session validation base URL
+
+Set the optional `AUTH_SESSION_BASE_URL` environment variable when the frontend middleware must reach the Better Auth session endpoint via an internal network address (for example, when Docker networking prevents access to `APP_URL`). When the variable is not provided, the middleware derives the base URL from the incoming request origin and forwarded headers so authentication succeeds behind reverse proxies and other non-local deployments.
+
 ## 🔗 OpenID Connect (OIDC) Provider Support
 
 MetaMCP supports **OpenID Connect authentication** for enterprise SSO integration. This allows organizations to use their existing identity providers (Auth0, Keycloak, Azure AD, etc.) for authentication.

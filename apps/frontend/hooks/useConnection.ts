@@ -46,21 +46,21 @@ import {
   Notification,
   StdErrNotificationSchema,
 } from "../lib/notificationTypes";
-import { createAuthProvider } from "../lib/oauth-provider";
+import { createBrowserAuthProvider } from "../lib/browser-oauth-provider";
 import { trpc } from "../lib/trpc";
 /**
  * Validates and normalizes a server URL, providing fallback to app URL if invalid
  */
 const validateServerUrl = (url: string | null): string => {
   if (!url || url.trim() === '') {
-    console.warn('Empty server URL, using app URL as fallback');
-    return getAppUrl();
+    console.warn('Empty server URL, using current origin as fallback');
+    return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:23456';
   }
   
   try {
     // Handle relative URLs by providing a base URL
     if (url.startsWith('/')) {
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : getAppUrl();
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:23456';
       new URL(url, baseUrl);
       return new URL(url, baseUrl).href;
     } else {
@@ -69,7 +69,7 @@ const validateServerUrl = (url: string | null): string => {
     }
   } catch (error) {
     console.error('Invalid server URL format:', url, error);
-    return getAppUrl();
+    return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:23456';
   }
 };
 
@@ -110,7 +110,7 @@ export function useConnection({
   includeInactiveServers = false,
   enabled = true,
 }: UseConnectionOptions) {
-  const authProvider = createAuthProvider(mcpServerUuid, url);
+  const authProvider = createBrowserAuthProvider(mcpServerUuid, url);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>("disconnected");
   const [serverCapabilities, setServerCapabilities] =
@@ -281,7 +281,7 @@ export function useConnection({
 
   const checkProxyHealth = useMemoizedFn(async () => {
     try {
-      const proxyHealthUrl = new URL(`/mcp-proxy/server/health`, getAppUrl());
+      const proxyHealthUrl = '/mcp-proxy/server/health';
 
       // Cookies will be sent automatically by the browser
       const proxyHealthResponse = await fetch(proxyHealthUrl, {
@@ -421,7 +421,9 @@ export function useConnection({
         // Handle MetaMCP connections
         if (isMetaMCP) {
           // For MetaMCP, we use SSE connection to the metamcp proxy endpoint
-          mcpProxyServerUrl = new URL(url, getAppUrl());
+          // Ensure absolute URL construction to avoid locale prefix issues
+          const metaMcpOrigin = window.location.origin;
+          mcpProxyServerUrl = new URL(`${metaMcpOrigin}${url}`);
           // Add includeInactiveServers as a query parameter
           if (includeInactiveServers) {
             mcpProxyServerUrl.searchParams.append(
@@ -449,10 +451,8 @@ export function useConnection({
         } else {
           switch (transportType) {
             case McpServerTypeEnum.Enum.STDIO:
-              mcpProxyServerUrl = new URL(
-                `/mcp-proxy/server/stdio`,
-                getAppUrl(),
-              );
+              // Use relative URL to leverage Next.js rewrites and avoid locale interference
+              mcpProxyServerUrl = new URL("/mcp-proxy/server/stdio", window.location.origin);
               mcpProxyServerUrl.searchParams.append("command", command);
               mcpProxyServerUrl.searchParams.append("args", args);
               mcpProxyServerUrl.searchParams.append("env", JSON.stringify(env));
@@ -484,7 +484,9 @@ export function useConnection({
               break;
 
             case McpServerTypeEnum.Enum.SSE:
-              mcpProxyServerUrl = new URL(`/mcp-proxy/server/sse`, getAppUrl());
+              // Ensure absolute URL construction to avoid locale prefix issues
+              const sseOrigin = window.location.origin;
+              mcpProxyServerUrl = new URL(`${sseOrigin}/mcp-proxy/server/sse`);
               mcpProxyServerUrl.searchParams.append("url", url);
               transportOptions = {
                 eventSourceInit: {
@@ -513,7 +515,9 @@ export function useConnection({
               break;
 
             case McpServerTypeEnum.Enum.STREAMABLE_HTTP:
-              mcpProxyServerUrl = new URL(`/mcp-proxy/server/mcp`, getAppUrl());
+              // Ensure absolute URL construction to avoid locale prefix issues
+              const mcpOrigin = window.location.origin;
+              mcpProxyServerUrl = new URL(`${mcpOrigin}/mcp-proxy/server/mcp`);
               mcpProxyServerUrl.searchParams.append("url", url);
               transportOptions = {
                 ...(authTokens && { authProvider: authProvider }),
