@@ -3,7 +3,18 @@ const nextConfig = {
   output: "standalone",
   experimental: {
     proxyTimeout: 1000 * 120,
+    // Enable WebSocket proxying for STDIO transport
+    serverExternalPackages: ["@modelcontextprotocol/sdk"],
   },
+  // Configure allowed origins for cross-origin requests in development
+  allowedDevOrigins: [
+    "192.168.2.222:3000",
+    "192.168.2.222:32008",
+    "localhost:3000", 
+    "localhost:32008",
+    "127.0.0.1:3000",
+    "127.0.0.1:32008"
+  ],
   async rewrites() {
     // Use localhost for rewrites since frontend and backend run in the same container
     const backendUrl = "http://localhost:32009";

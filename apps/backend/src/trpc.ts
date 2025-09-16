@@ -2,14 +2,13 @@ import type { BaseContext } from "@repo/trpc";
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Request, Response } from "express";
 
-import { auth, type Session, type User } from "./auth";
+// Auth import removed - no longer needed after auth deactivation
 
 // Extend the base context with Express request/response and auth data
 export interface Context extends BaseContext {
   req: Request;
   res: Response;
-  user?: User;
-  session?: Session;
+  // user and session removed - no longer needed after auth deactivation
 }
 
 // Create context from Express request/response with auth
@@ -20,8 +19,7 @@ export const createContext = async ({
   req: Request;
   res: Response;
 }): Promise<Context> => {
-  let user: User | undefined;
-  let session: Session | undefined;
+  // user and session variables removed - no longer needed after auth deactivation
 
   try {
     // Check if we have cookies in the request
@@ -44,8 +42,7 @@ export const createContext = async ({
 
       if (sessionResponse.ok) {
         const sessionData = (await sessionResponse.json()) as {
-          user?: User;
-          session?: Session;
+          // user and session removed - no longer needed after auth deactivation
         };
 
         if (sessionData?.user && sessionData?.session) {
@@ -89,6 +86,6 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
       // Override types to indicate user and session are guaranteed to exist
       user: ctx.user,
       session: ctx.session,
-    } as Context & { user: User; session: Session },
+    } as Context,
   });
 });

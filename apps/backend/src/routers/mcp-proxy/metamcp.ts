@@ -9,12 +9,11 @@ import {
   getTransport,
   setTransport,
 } from "../../lib/session-store";
-import { betterAuthMcpMiddleware } from "../../middleware/better-auth-mcp.middleware";
+// Auth middleware import removed - no longer needed after auth deactivation
 
 const metamcpRouter = express.Router();
 
-// Apply better auth middleware to all metamcp routes
-metamcpRouter.use(betterAuthMcpMiddleware);
+// Auth middleware removed - no longer needed after auth deactivation
 
 const apiKeysRepository = new ApiKeysRepository();
 

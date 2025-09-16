@@ -46,7 +46,7 @@ import {
   Notification,
   StdErrNotificationSchema,
 } from "../lib/notificationTypes";
-import { createAuthProvider } from "../lib/oauth-provider";
+import { createBrowserAuthProvider } from "../lib/browser-oauth-provider";
 import { trpc } from "../lib/trpc";
 /**
  * Validates and normalizes a server URL, providing fallback to app URL if invalid
@@ -110,7 +110,7 @@ export function useConnection({
   includeInactiveServers = false,
   enabled = true,
 }: UseConnectionOptions) {
-  const authProvider = createAuthProvider(mcpServerUuid, url);
+  const authProvider = createBrowserAuthProvider(mcpServerUuid, url);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>("disconnected");
   const [serverCapabilities, setServerCapabilities] =
@@ -451,9 +451,8 @@ export function useConnection({
         } else {
           switch (transportType) {
             case McpServerTypeEnum.Enum.STDIO:
-              // Ensure absolute URL construction to avoid locale prefix issues
-              const origin = window.location.origin;
-              mcpProxyServerUrl = new URL(`${origin}/mcp-proxy/server/stdio`);
+              // Use relative URL to leverage Next.js rewrites and avoid locale interference
+              mcpProxyServerUrl = new URL("/mcp-proxy/server/stdio", window.location.origin);
               mcpProxyServerUrl.searchParams.append("command", command);
               mcpProxyServerUrl.searchParams.append("args", args);
               mcpProxyServerUrl.searchParams.append("env", JSON.stringify(env));

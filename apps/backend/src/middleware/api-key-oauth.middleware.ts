@@ -1,11 +1,4 @@
-import { DatabaseEndpoint } from "@repo/zod-types";
-import express from "express";
-
-import { ApiKeysRepository } from "../db/repositories/api-keys.repo";
-import {
-  authRateLimiter,
-  getAuthRateLimitIdentifier,
-} from "../lib/auth-rate-limiter";
+// Auth rate limiter import removed - no longer needed after auth deactivation
 
 // Extend Express Request interface for our custom properties
 export interface ApiKeyAuthenticatedRequest extends express.Request {

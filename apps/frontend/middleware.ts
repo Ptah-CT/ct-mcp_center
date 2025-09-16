@@ -1,13 +1,7 @@
-import { betterFetch } from "@better-fetch/fetch";
 import { NextRequest, NextResponse } from "next/server";
 
 const locales = ["en", "zh"];
 const defaultLocale = "en";
-
-const configuredSessionBaseUrl =
-  process.env.AUTH_SESSION_BASE_URL ||
-  process.env.APP_URL ||
-  process.env.NEXT_PUBLIC_APP_URL;
 
 // Get the preferred locale from the request
 function getLocale(request: NextRequest): string {
@@ -42,7 +36,8 @@ function getLocale(request: NextRequest): string {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Skip middleware for static files and API routes
+  // CRITICAL: Skip middleware completely for proxy and API routes
+  // This prevents i18n interference with proxy routing
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/") ||
@@ -79,58 +74,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(newUrl);
   }
 
-  // Now handle authentication for the pathname without locale
-  const publicRoutes = ["/login", "/register", "/", "/cors-error"];
-  if (publicRoutes.includes(pathnameWithoutLocale)) {
-    return NextResponse.next();
-  }
-
-  try {
-    const forwardedHost = request.headers.get("x-forwarded-host") || "";
-    const hostHeader = request.headers.get("host") || "";
-    // Get the original host for nginx compatibility
-    const originalHost = forwardedHost || hostHeader;
-    const forwardedProto = request.headers.get("x-forwarded-proto") || "";
-    const forwardedFor = request.headers.get("x-forwarded-for") || "";
-
-    const fallbackBaseUrl =
-      forwardedProto && originalHost
-        ? `${forwardedProto}://${originalHost}`
-        : request.nextUrl.origin;
-    const sessionBaseUrl = (configuredSessionBaseUrl || fallbackBaseUrl).replace(
-      /\/$/,
-      "",
-    );
-
-    // Check if user is authenticated by calling the session endpoint
-    const { data: session } = await betterFetch("/api/auth/get-session", {
-      baseURL: sessionBaseUrl,
-      headers: {
-        cookie: request.headers.get("cookie") || "",
-        // Pass nginx-forwarded host headers for better-auth baseURL resolution
-        host: originalHost,
-        // Include nginx forwarding headers if present
-        "x-forwarded-host": forwardedHost,
-        "x-forwarded-proto": forwardedProto,
-        "x-forwarded-for": forwardedFor,
-      },
-    });
-
-    if (!session) {
-      // Redirect to login if not authenticated (with locale)
-      const loginUrl = new URL(`/${locale}/login`, request.url);
-      loginUrl.searchParams.set("callbackUrl", pathnameWithoutLocale);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    return NextResponse.next();
-  } catch (error) {
-    console.error("Auth middleware error:", error);
-    // On error, redirect to login (with locale)
-    const loginUrl = new URL(`/${locale}/login`, request.url);
-    loginUrl.searchParams.set("callbackUrl", pathnameWithoutLocale);
-    return NextResponse.redirect(loginUrl);
-  }
+  // No authentication required - direct access to all routes
+  return NextResponse.next();
 }
 
 export const config = {

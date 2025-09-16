@@ -11,7 +11,7 @@ export const createAppRouter = (implementations: {
       mcpServers: frontendRouters.mcpServers,
       namespaces: frontendRouters.namespaces,
       endpoints: frontendRouters.endpoints,
-      oauth: frontendRouters.oauth,
+
       tools: frontendRouters.tools,
       apiKeys: frontendRouters.apiKeys,
       config: frontendRouters.config,

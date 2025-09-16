@@ -35,7 +35,8 @@ import {
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useTranslations } from "@/hooks/useTranslations";
-import { authClient } from "@/lib/auth-client";
+import { useLocale } from "@/hooks/useLocale";
+
 import { getLocalizedPath, SupportedLocale } from "@/lib/i18n";
 
 // Menu items function - now takes locale parameter
@@ -95,6 +96,22 @@ function LiveLogsMenuItem() {
 
 function UserInfoFooter() {
   const { t } = useTranslations();
+
+  return (
+    <SidebarFooter>
+      <div className="flex flex-col gap-4 p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
+          <p className="text-xs text-muted-foreground">v2.4.14</p>
+        </div>
+      </div>
+    </SidebarFooter>
+  );
+} = useTranslations();
+  const locale = useLocale();
   const [user, setUser] = useState<any>(null);
 
   // Get user info
@@ -108,7 +125,7 @@ function UserInfoFooter() {
 
   const handleSignOut = async () => {
     await authClient.signOut();
-    window.location.href = "/login";
+    window.location.href = getLocalizedPath("/login", locale);
   };
 
   return (

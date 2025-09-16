@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import { useTranslations } from "@/hooks/useTranslations";
 
 import { getServerSpecificKey, SESSION_KEYS } from "../lib/constants";
-import { createAuthProvider } from "../lib/oauth-provider";
+import { createBrowserAuthProvider } from "../lib/browser-oauth-provider";
 import { vanillaTrpcClient } from "../lib/trpc";
 
 const OAuthCallback = () => {
@@ -39,8 +39,8 @@ const OAuthCallback = () => {
       }
 
       try {
-        // Create auth provider with existing server UUID and URL
-        const authProvider = createAuthProvider(mcpServerUuid, serverUrl);
+        // Create browser-compatible auth provider with existing server UUID and URL
+        const authProvider = createBrowserAuthProvider(mcpServerUuid, serverUrl);
 
         // Complete the OAuth flow
         const result = await auth(authProvider, {
