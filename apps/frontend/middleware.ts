@@ -4,6 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 const locales = ["en", "zh"];
 const defaultLocale = "en";
 
+const configuredSessionBaseUrl =
+  process.env.AUTH_SESSION_BASE_URL ||
+  process.env.APP_URL ||
+  process.env.NEXT_PUBLIC_APP_URL;
+
 // Get the preferred locale from the request
 function getLocale(request: NextRequest): string {
   // Check if there's a locale in the pathname
@@ -81,24 +86,33 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
+    const forwardedHost = request.headers.get("x-forwarded-host") || "";
+    const hostHeader = request.headers.get("host") || "";
     // Get the original host for nginx compatibility
-    const originalHost =
-      request.headers.get("x-forwarded-host") ||
-      request.headers.get("host") ||
-      "";
+    const originalHost = forwardedHost || hostHeader;
+    const forwardedProto = request.headers.get("x-forwarded-proto") || "";
+    const forwardedFor = request.headers.get("x-forwarded-for") || "";
+
+    const fallbackBaseUrl =
+      forwardedProto && originalHost
+        ? `${forwardedProto}://${originalHost}`
+        : request.nextUrl.origin;
+    const sessionBaseUrl = (configuredSessionBaseUrl || fallbackBaseUrl).replace(
+      /\/$/,
+      "",
+    );
 
     // Check if user is authenticated by calling the session endpoint
     const { data: session } = await betterFetch("/api/auth/get-session", {
-      // this hardcoded is correct, because in same container, we should use localhost, outside url won't work
-      baseURL: "http://127.0.0.1:32009",
+      baseURL: sessionBaseUrl,
       headers: {
         cookie: request.headers.get("cookie") || "",
         // Pass nginx-forwarded host headers for better-auth baseURL resolution
         host: originalHost,
         // Include nginx forwarding headers if present
-        "x-forwarded-host": request.headers.get("x-forwarded-host") || "",
-        "x-forwarded-proto": request.headers.get("x-forwarded-proto") || "",
-        "x-forwarded-for": request.headers.get("x-forwarded-for") || "",
+        "x-forwarded-host": forwardedHost,
+        "x-forwarded-proto": forwardedProto,
+        "x-forwarded-for": forwardedFor,
       },
     });
 
