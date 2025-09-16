@@ -145,6 +145,10 @@ const performTimeBasedCleanup = async () => {
 // Start time-based cleanup timer for MetaMCP
 const cleanupTimer = setInterval(performTimeBasedCleanup, CLEANUP_INTERVAL);
 
+export const stopMetaMcpCleanup = () => {
+  clearInterval(cleanupTimer);
+};
+
 metamcpRouter.get("/:uuid/mcp", async (req, res) => {
   const namespaceUuid = req.params.uuid;
   const apiKey = extractApiKey(req);
